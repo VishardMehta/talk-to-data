@@ -1,0 +1,177 @@
+verified_queries:
+  # ===== CHANGE ANALYSIS =====
+  - question: "Why did revenue drop last month?"
+    pattern: CHANGE_ANALYSIS
+    sql: |
+      SELECT 
+        strftime('%Y-%m', order_date) as month,
+        SUM(amount) as revenue
+      FROM orders
+      WHERE order_date >= date('now', '-2 months')
+        AND status = 'completed'
+      GROUP BY month
+      ORDER BY month
+
+  - question: "What caused the increase in complaints?"
+    pattern: CHANGE_ANALYSIS
+    sql: |
+      SELECT 
+        strftime('%Y-%m', created_date) as month,
+        category,
+        COUNT(*) as complaint_count
+      FROM complaints
+      WHERE created_date >= date('now', '-3 months')
+      GROUP BY month, category
+      ORDER BY month, complaint_count DESC
+
+  - question: "Why did orders decrease in the South region?"
+    pattern: CHANGE_ANALYSIS
+    sql: |
+      SELECT 
+        strftime('%Y-%m', order_date) as month,
+        region,
+        COUNT(*) as order_count,
+        SUM(amount) as revenue
+      FROM orders
+      WHERE region = 'South'
+        AND order_date >= date('now', '-3 months')
+      GROUP BY month
+      ORDER BY month
+
+  # ===== COMPARISON =====
+  - question: "Compare North vs South region revenue"
+    pattern: COMPARISON
+    sql: |
+      SELECT 
+        region,
+        SUM(amount) as total_revenue,
+        COUNT(*) as total_orders,
+        AVG(amount) as avg_order_value
+      FROM orders
+      WHERE region IN ('North', 'South')
+        AND status = 'completed'
+      GROUP BY region
+
+  - question: "Compare this month vs last month sales"
+    pattern: COMPARISON
+    sql: |
+      SELECT 
+        CASE 
+          WHEN order_date >= date('now', 'start of month') THEN 'This Month'
+          ELSE 'Last Month'
+        END as period,
+        SUM(amount) as revenue,
+        COUNT(*) as orders
+      FROM orders
+      WHERE order_date >= date('now', 'start of month', '-1 month')
+        AND status = 'completed'
+      GROUP BY period
+
+  - question: "Compare online vs retail channel performance"
+    pattern: COMPARISON
+    sql: |
+      SELECT 
+        channel,
+        SUM(amount) as revenue,
+        COUNT(*) as orders,
+        AVG(amount) as avg_order
+      FROM orders
+      WHERE status = 'completed'
+      GROUP BY channel
+
+  # ===== BREAKDOWN =====
+  - question: "What makes up total revenue by category?"
+    pattern: BREAKDOWN
+    sql: |
+      SELECT 
+        p.category,
+        SUM(o.amount) as revenue,
+        ROUND(SUM(o.amount) * 100.0 / (SELECT SUM(amount) FROM orders WHERE status='completed'), 1) as pct
+      FROM orders o
+      JOIN products p ON o.product_id = p.product_id
+      WHERE o.status = 'completed'
+      GROUP BY p.category
+      ORDER BY revenue DESC
+
+  - question: "Show the breakdown of complaints by category"
+    pattern: BREAKDOWN
+    sql: |
+      SELECT 
+        category,
+        COUNT(*) as count,
+        ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM complaints), 1) as pct
+      FROM complaints
+      GROUP BY category
+      ORDER BY count DESC
+
+  - question: "Breakdown of orders by region"
+    pattern: BREAKDOWN
+    sql: |
+      SELECT 
+        region,
+        COUNT(*) as orders,
+        SUM(amount) as revenue,
+        ROUND(SUM(amount) * 100.0 / (SELECT SUM(amount) FROM orders), 1) as pct
+      FROM orders
+      GROUP BY region
+      ORDER BY revenue DESC
+
+  # ===== SUMMARY =====
+  - question: "Give me a summary of this month's metrics"
+    pattern: SUMMARY
+    sql: |
+      SELECT 
+        SUM(amount) as total_revenue,
+        COUNT(*) as total_orders,
+        AVG(amount) as avg_order_value,
+        COUNT(DISTINCT customer_id) as unique_customers,
+        SUM(CASE WHEN status='cancelled' THEN 1 ELSE 0 END) as cancelled_orders,
+        SUM(CASE WHEN status='returned' THEN 1 ELSE 0 END) as returned_orders
+      FROM orders
+      WHERE order_date >= date('now', 'start of month')
+
+  - question: "Weekly summary of customer metrics"
+    pattern: SUMMARY
+    sql: |
+      SELECT
+        strftime('%W', order_date) as week,
+        COUNT(DISTINCT customer_id) as active_customers,
+        COUNT(*) as orders,
+        SUM(amount) as revenue,
+        AVG(amount) as avg_order
+      FROM orders
+      WHERE order_date >= date('now', '-28 days')
+      GROUP BY week
+      ORDER BY week
+
+  # ===== GENERAL =====
+  - question: "Top 5 customers by spending"
+    pattern: GENERAL
+    sql: |
+      SELECT 
+        c.name,
+        c.segment,
+        SUM(o.amount) as total_spent,
+        COUNT(o.order_id) as order_count
+      FROM orders o
+      JOIN customers c ON o.customer_id = c.customer_id
+      WHERE o.status = 'completed'
+      GROUP BY c.customer_id, c.name, c.segment
+      ORDER BY total_spent DESC
+      LIMIT 5
+
+  - question: "Which products have the highest return rate?"
+    pattern: GENERAL
+    sql: |
+      SELECT 
+        p.name,
+        p.category,
+        COUNT(CASE WHEN o.status='returned' THEN 1 END) as returns,
+        COUNT(*) as total_orders,
+        ROUND(COUNT(CASE WHEN o.status='returned' THEN 1 END) * 100.0 / COUNT(*), 1) as return_rate
+      FROM orders o
+      JOIN products p ON o.product_id = p.product_id
+      GROUP BY p.product_id, p.name, p.category
+      HAVING total_orders > 5
+      ORDER BY return_rate DESC
+      LIMIT 10

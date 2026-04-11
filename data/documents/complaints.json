@@ -1,0 +1,597 @@
+[
+  {
+    "id": 1,
+    "text": "Ordered a laptop on March 2, delivery was promised in 3 days but arrived after 2 weeks. Packaging was damaged. South region warehouse seems to have major issues.",
+    "category": "delivery",
+    "region": "South",
+    "date": "2025-02-27"
+  },
+  {
+    "id": 2,
+    "text": "South region deliveries have been terrible since February. My electronics order took 12 days instead of the usual 3. Multiple friends have similar complaints.",
+    "category": "delivery",
+    "region": "South",
+    "date": "2025-02-23"
+  },
+  {
+    "id": 3,
+    "text": "Third delayed delivery this month from the South warehouse. My SmartWatch Pro order was stuck in Chennai sorting facility for 8 days. Something is seriously wrong.",
+    "category": "delivery",
+    "region": "South",
+    "date": "2025-02-10"
+  },
+  {
+    "id": 4,
+    "text": "Delivery partner in Bangalore couldn't find my address despite clear landmarks. Order was returned to warehouse and I had to wait another week. South region needs better trained partners.",
+    "category": "delivery",
+    "region": "South",
+    "date": "2025-02-22"
+  },
+  {
+    "id": 5,
+    "text": "Received a completely damaged package from South warehouse. The box looked like it was thrown around. My Headphones were broken inside. This is the second time this happened.",
+    "category": "delivery",
+    "region": "South",
+    "date": "2025-02-12"
+  },
+  {
+    "id": 6,
+    "text": "South region supply chain appears to be broken. Spoke to other customers in my apartment complex - everyone is facing delivery delays since February 2025.",
+    "category": "delivery",
+    "region": "South",
+    "date": "2025-02-11"
+  },
+  {
+    "id": 7,
+    "text": "My order from Chennai warehouse has been showing 'in transit' for 10 days. Customer support says there's a 'temporary logistics issue' in the South region. Very vague response.",
+    "category": "delivery",
+    "region": "South",
+    "date": "2025-02-22"
+  },
+  {
+    "id": 8,
+    "text": "Hyderabad delivery hub seems overwhelmed. All my recent orders are delayed by at least a week. Previously, same-day delivery was common in this area.",
+    "category": "delivery",
+    "region": "South",
+    "date": "2025-02-20"
+  },
+  {
+    "id": 9,
+    "text": "Placed 3 orders in March, all from South warehouse. Two were delayed by over a week, one was delivered damaged. The logistics quality has dropped significantly.",
+    "category": "delivery",
+    "region": "South",
+    "date": "2025-02-23"
+  },
+  {
+    "id": 10,
+    "text": "Multiple returns and re-deliveries for my Bangalore address. South region courier partners are consistently late and sometimes don't show up at all.",
+    "category": "delivery",
+    "region": "South",
+    "date": "2025-02-24"
+  },
+  {
+    "id": 11,
+    "text": "The delivery situation in South India has become unbearable since February. My colleague's expensive electronics order was lost in transit between warehouses.",
+    "category": "delivery",
+    "region": "South",
+    "date": "2025-03-08"
+  },
+  {
+    "id": 12,
+    "text": "Delivery tracking for South region orders is extremely inaccurate. Shows 'out for delivery' for 3 days straight. My UltraBook Laptop finally arrived after 11 days.",
+    "category": "delivery",
+    "region": "South",
+    "date": "2025-03-08"
+  },
+  {
+    "id": 13,
+    "text": "South region warehouse appears to be understaffed. Orders are being dispatched much later than usual. My March orders all shipped 4-5 days after placement.",
+    "category": "delivery",
+    "region": "South",
+    "date": "2025-03-15"
+  },
+  {
+    "id": 14,
+    "text": "Filed 4 complaints this month alone about delivery delays from South region. Each time told 'it will be escalated'. No actual improvement seen.",
+    "category": "delivery",
+    "region": "South",
+    "date": "2025-03-25"
+  },
+  {
+    "id": 15,
+    "text": "Chennai warehouse seems to have storage issues. Received a product with warehouse damage (dents and scratches) that clearly happened during storage, not transit.",
+    "category": "delivery",
+    "region": "South",
+    "date": "2025-03-09"
+  },
+  {
+    "id": 16,
+    "text": "South region express delivery is a joke now. Paid extra for 1-day delivery of my tablet, received it after 6 days. No refund of delivery charges offered.",
+    "category": "delivery",
+    "region": "South",
+    "date": "2025-03-12"
+  },
+  {
+    "id": 17,
+    "text": "Our company ordered bulk electronics from South warehouse. Half the shipment arrived damaged. The other half was delayed by 2 weeks. Switching to North fulfillment.",
+    "category": "delivery",
+    "region": "South",
+    "date": "2025-03-15"
+  },
+  {
+    "id": 18,
+    "text": "Bangalore last-mile delivery has deteriorated since their logistics partner changed. My ProMax Phone order was handed to me in a torn poly bag.",
+    "category": "delivery",
+    "region": "South",
+    "date": "2025-03-02"
+  },
+  {
+    "id": 19,
+    "text": "Consistent pattern of South region delays since mid-February. Spoke to customer service who admitted they're 'aware of regional challenges'. Not reassuring.",
+    "category": "delivery",
+    "region": "South",
+    "date": "2025-03-03"
+  },
+  {
+    "id": 20,
+    "text": "My parents in Hyderabad have stopped ordering online because of repeated delivery failures. South region has lost customer trust in just 2 months.",
+    "category": "delivery",
+    "region": "South",
+    "date": "2025-03-13"
+  },
+  {
+    "id": 21,
+    "text": "Order marked delivered but left at security gate in rain. South region delivery agents don't follow safe delivery protocols anymore.",
+    "category": "delivery",
+    "region": "South",
+    "date": "2025-03-11"
+  },
+  {
+    "id": 22,
+    "text": "Tracking shows my order bouncing between South region hubs for 5 days. Chennai \u2192 Bangalore \u2192 Chennai again. Clear logistics routing issues.",
+    "category": "delivery",
+    "region": "South",
+    "date": "2025-03-05"
+  },
+  {
+    "id": 23,
+    "text": "Premium customer here with 3 years of loyalty. South region delivery has never been this bad. Considering switching to competitor platforms.",
+    "category": "delivery",
+    "region": "South",
+    "date": "2025-03-15"
+  },
+  {
+    "id": 24,
+    "text": "South warehouse sent wrong item twice for the same order. Had to return and reorder. Total time wasted: 3 weeks. Absolutely unacceptable.",
+    "category": "delivery",
+    "region": "South",
+    "date": "2025-03-14"
+  },
+  {
+    "id": 25,
+    "text": "Delivery agent in Chennai was rude when I pointed out the delayed delivery. Started arguing instead of apologizing. Poor training in South region.",
+    "category": "delivery",
+    "region": "South",
+    "date": "2025-03-03"
+  },
+  {
+    "id": 26,
+    "text": "February and March have been nightmare months for South region customers. Every order I place takes 10+ days. Something systemic is going on.",
+    "category": "delivery",
+    "region": "South",
+    "date": "2025-03-08"
+  },
+  {
+    "id": 27,
+    "text": "The cardboard quality used for packaging at South warehouse has clearly been downgraded. Products arriving with more damage than ever before.",
+    "category": "delivery",
+    "region": "South",
+    "date": "2025-03-14"
+  },
+  {
+    "id": 28,
+    "text": "Group complaint from our residential society in Bangalore: 15 residents have experienced delivery delays in March alone. All South warehouse orders.",
+    "category": "delivery",
+    "region": "South",
+    "date": "2025-03-22"
+  },
+  {
+    "id": 29,
+    "text": "My March order for kitchen appliances arrived broken. South warehouse packing team used no bubble wrap or protective material. \u20b915,000 product wasted.",
+    "category": "delivery",
+    "region": "South",
+    "date": "2025-03-18"
+  },
+  {
+    "id": 30,
+    "text": "South region customer service can't even track orders properly. They give different ETAs every time I call. Internal systems seem to be in chaos.",
+    "category": "delivery",
+    "region": "South",
+    "date": "2025-03-03"
+  },
+  {
+    "id": 31,
+    "text": "Products from South warehouse arrive in poor condition. My new electronics had visible scratches that weren't there in unboxing videos of the same product.",
+    "category": "quality",
+    "region": "South",
+    "date": "2025-02-10"
+  },
+  {
+    "id": 32,
+    "text": "Quality control at Chennai fulfillment center needs a complete overhaul. Receiving expired food products and damaged electronics regularly.",
+    "category": "quality",
+    "region": "South",
+    "date": "2025-03-05"
+  },
+  {
+    "id": 33,
+    "text": "South warehouse seems to be shipping refurbished items as new. My 'new' laptop had signs of previous use and different serial number than invoice.",
+    "category": "quality",
+    "region": "South",
+    "date": "2025-02-08"
+  },
+  {
+    "id": 34,
+    "text": "Clothing orders from South region arrive wrinkled and sometimes with a musty smell. Storage conditions at the warehouse seem subpar.",
+    "category": "quality",
+    "region": "South",
+    "date": "2025-03-17"
+  },
+  {
+    "id": 35,
+    "text": "Received a Beauty product from Hyderabad warehouse that was clearly tampered with. Seal was broken and product was half used.",
+    "category": "quality",
+    "region": "South",
+    "date": "2025-03-07"
+  },
+  {
+    "id": 36,
+    "text": "South region product quality has dropped since Feb 2025. Suspect they changed suppliers or are cutting corners on storage.",
+    "category": "quality",
+    "region": "South",
+    "date": "2025-03-24"
+  },
+  {
+    "id": 37,
+    "text": "Multiple items from South warehouse had damaged barcodes and labels. Looks like water damage in the storage facility.",
+    "category": "quality",
+    "region": "South",
+    "date": "2025-02-20"
+  },
+  {
+    "id": 38,
+    "text": "Electronics from South fulfillment show higher failure rates. My community forum has 20+ reports of DOA products this month alone.",
+    "category": "quality",
+    "region": "South",
+    "date": "2025-03-21"
+  },
+  {
+    "id": 39,
+    "text": "The product I received from South warehouse was outdated model despite ordering the latest version. Either inventory mix-up or deliberate.",
+    "category": "quality",
+    "region": "South",
+    "date": "2025-03-10"
+  },
+  {
+    "id": 40,
+    "text": "South region cosmetics arrived melted. Clearly not stored in temperature-controlled conditions. \u20b93,000 worth of products ruined.",
+    "category": "quality",
+    "region": "South",
+    "date": "2025-03-10"
+  },
+  {
+    "id": 41,
+    "text": "Repeated quality issues with South warehouse: wrong sizes in clothing, dented electronics boxes, expired supplements. Pattern is clear.",
+    "category": "quality",
+    "region": "South",
+    "date": "2025-03-25"
+  },
+  {
+    "id": 42,
+    "text": "Ordered premium headphones from South warehouse, received a cheap knockoff. Packaging was resealed. This is fraud.",
+    "category": "quality",
+    "region": "South",
+    "date": "2025-02-28"
+  },
+  {
+    "id": 43,
+    "text": "South warehouse food items arrived past expiry date. This is a health hazard. Filing a formal complaint with consumer forum.",
+    "category": "quality",
+    "region": "South",
+    "date": "2025-02-11"
+  },
+  {
+    "id": 44,
+    "text": "The sewing on clothing items from South region is consistently poor. Had to return 3 out of 5 shirts. Other regions are fine.",
+    "category": "quality",
+    "region": "South",
+    "date": "2025-03-18"
+  },
+  {
+    "id": 45,
+    "text": "South warehouse is shipping items without proper protective packaging. Even 'fragile' marked items arrive in plain boxes with no padding.",
+    "category": "quality",
+    "region": "South",
+    "date": "2025-02-22"
+  },
+  {
+    "id": 46,
+    "text": "North region delivery was slightly delayed but product arrived in perfect condition. Minor inconvenience.",
+    "category": "delivery",
+    "region": "North",
+    "date": "2025-01-15"
+  },
+  {
+    "id": 47,
+    "text": "Mumbai delivery is generally reliable. Had one delayed order this week but support resolved quickly.",
+    "category": "delivery",
+    "region": "West",
+    "date": "2025-02-10"
+  },
+  {
+    "id": 48,
+    "text": "East region customer service was helpful when I reported a pricing discrepancy. Refund processed same day.",
+    "category": "pricing",
+    "region": "East",
+    "date": "2025-01-22"
+  },
+  {
+    "id": 49,
+    "text": "Delhi warehouse packing quality is excellent. Never had a damaged delivery from North region.",
+    "category": "quality",
+    "region": "North",
+    "date": "2025-02-05"
+  },
+  {
+    "id": 50,
+    "text": "Kolkata deliveries are fine except during festivals when everything gets delayed. Understandable.",
+    "category": "delivery",
+    "region": "East",
+    "date": "2025-03-01"
+  },
+  {
+    "id": 51,
+    "text": "Pune office received bulk order on time. West region B2B fulfillment works well.",
+    "category": "delivery",
+    "region": "West",
+    "date": "2025-01-18"
+  },
+  {
+    "id": 52,
+    "text": "Had a pricing issue with an Electronics order in January. Support in North region was responsive and credited the difference.",
+    "category": "pricing",
+    "region": "North",
+    "date": "2025-01-28"
+  },
+  {
+    "id": 53,
+    "text": "Jaipur delivery partner is excellent. Always calls before delivery and handles packages carefully.",
+    "category": "service",
+    "region": "North",
+    "date": "2025-02-14"
+  },
+  {
+    "id": 54,
+    "text": "Mumbai warehouse processed my return within 2 days. Refund was fast. Good experience with West region.",
+    "category": "refund",
+    "region": "West",
+    "date": "2025-03-05"
+  },
+  {
+    "id": 55,
+    "text": "East region delivery times have improved compared to last year. Kolkata now gets 2-day delivery consistently.",
+    "category": "delivery",
+    "region": "East",
+    "date": "2025-02-20"
+  },
+  {
+    "id": 56,
+    "text": "Quality of electronics from North warehouse is consistently high. All my gadgets arrived in mint condition.",
+    "category": "quality",
+    "region": "North",
+    "date": "2025-03-10"
+  },
+  {
+    "id": 57,
+    "text": "West region food delivery maintains cold chain well. Supplements and perishables always arrive fresh.",
+    "category": "quality",
+    "region": "West",
+    "date": "2025-01-30"
+  },
+  {
+    "id": 58,
+    "text": "Ahmedabad customer here - delivery is prompt and packaging is secure. No complaints about West region.",
+    "category": "delivery",
+    "region": "West",
+    "date": "2025-02-25"
+  },
+  {
+    "id": 59,
+    "text": "Delhi same-day delivery actually delivered same day! Impressed with North region speed.",
+    "category": "delivery",
+    "region": "North",
+    "date": "2025-03-15"
+  },
+  {
+    "id": 60,
+    "text": "Had a minor service issue in East region but it was resolved with one call. Support agent was professional.",
+    "category": "service",
+    "region": "East",
+    "date": "2025-01-12"
+  },
+  {
+    "id": 61,
+    "text": "Lucknow delivery took 4 days for a product that should come in 2. North region express isn't always express.",
+    "category": "delivery",
+    "region": "North",
+    "date": "2025-02-08"
+  },
+  {
+    "id": 62,
+    "text": "Quality issue with clothing from West warehouse. Stitching came apart after 2 washes. Decent refund process though.",
+    "category": "quality",
+    "region": "West",
+    "date": "2025-03-20"
+  },
+  {
+    "id": 63,
+    "text": "Mumbai return pickup was seamless. West region logistics handles returns much better than pickups.",
+    "category": "refund",
+    "region": "West",
+    "date": "2025-01-05"
+  },
+  {
+    "id": 64,
+    "text": "North region has best packaging I've seen. Double-boxed my fragile order with extra bubble wrap.",
+    "category": "quality",
+    "region": "North",
+    "date": "2025-02-15"
+  },
+  {
+    "id": 65,
+    "text": "East region customer support speaks Bengali which was helpful. Resolved my complaint about wrong product quickly.",
+    "category": "service",
+    "region": "East",
+    "date": "2025-03-08"
+  },
+  {
+    "id": 66,
+    "text": "Pricing error on website showed \u20b9500 instead of \u20b95000. West region honored the lower price. Great policy!",
+    "category": "pricing",
+    "region": "West",
+    "date": "2025-01-25"
+  },
+  {
+    "id": 67,
+    "text": "Jaipur electronics delivery arrived with original manufacturer seal intact. North warehouse handles products well.",
+    "category": "quality",
+    "region": "North",
+    "date": "2025-03-12"
+  },
+  {
+    "id": 68,
+    "text": "Kolkata home appliance delivery included free installation. East region service is improving steadily.",
+    "category": "service",
+    "region": "East",
+    "date": "2025-02-28"
+  },
+  {
+    "id": 69,
+    "text": "Delhi next-day delivery for premium members works flawlessly. North region logistics is top tier.",
+    "category": "delivery",
+    "region": "North",
+    "date": "2025-03-18"
+  },
+  {
+    "id": 70,
+    "text": "West region beauty products always arrive with samples. Nice touch from Mumbai warehouse team.",
+    "category": "quality",
+    "region": "West",
+    "date": "2025-01-20"
+  },
+  {
+    "id": 71,
+    "text": "Had a refund issue with North region order. Took 10 days but eventually resolved. Should be faster.",
+    "category": "refund",
+    "region": "North",
+    "date": "2025-02-22"
+  },
+  {
+    "id": 72,
+    "text": "East region wholesale orders are well-handled. Bulk pricing was transparent with no hidden fees.",
+    "category": "pricing",
+    "region": "East",
+    "date": "2025-03-03"
+  },
+  {
+    "id": 73,
+    "text": "Mumbai warehouse accidentally shipped 2 of the same item. Reported it and was told to keep both. Excellent service!",
+    "category": "service",
+    "region": "West",
+    "date": "2025-01-08"
+  },
+  {
+    "id": 74,
+    "text": "North region handles festival rush better than other regions. Diwali orders all arrived on time.",
+    "category": "delivery",
+    "region": "North",
+    "date": "2024-11-15"
+  },
+  {
+    "id": 75,
+    "text": "Pune order tracking is accurate and updates in real-time. West region tech infrastructure is solid.",
+    "category": "delivery",
+    "region": "West",
+    "date": "2025-02-12"
+  },
+  {
+    "id": 76,
+    "text": "East region express delivery launched in Kolkata. First order arrived in 4 hours. Impressive improvement.",
+    "category": "delivery",
+    "region": "East",
+    "date": "2025-03-25"
+  },
+  {
+    "id": 77,
+    "text": "Quality complaint about Home category product from North. Table arrived with one leg shorter. Manufacturing defect.",
+    "category": "quality",
+    "region": "North",
+    "date": "2025-01-14"
+  },
+  {
+    "id": 78,
+    "text": "West region subscription service works perfectly. Monthly deliveries arrive on the same date every month.",
+    "category": "service",
+    "region": "West",
+    "date": "2025-02-01"
+  },
+  {
+    "id": 79,
+    "text": "North region food items: all organic products were genuine with proper certification. Trust established.",
+    "category": "quality",
+    "region": "North",
+    "date": "2025-03-22"
+  },
+  {
+    "id": 80,
+    "text": "Kolkata customer service needs more English-speaking agents. Had difficulty explaining my issue.",
+    "category": "service",
+    "region": "East",
+    "date": "2025-01-18"
+  },
+  {
+    "id": 81,
+    "text": "West region price matching with competitors: submitted evidence and got \u20b92000 discount. Fair policy.",
+    "category": "pricing",
+    "region": "West",
+    "date": "2025-02-07"
+  },
+  {
+    "id": 82,
+    "text": "Delhi warehouse fire sale items arrived in perfect condition despite 70% discount. North QC is maintained even for sales.",
+    "category": "quality",
+    "region": "North",
+    "date": "2025-03-05"
+  },
+  {
+    "id": 83,
+    "text": "East region refund for defective electronics took 15 days. Acceptable but not great.",
+    "category": "refund",
+    "region": "East",
+    "date": "2025-01-28"
+  },
+  {
+    "id": 84,
+    "text": "North region loyalty program benefits are actually useful. Got free express delivery and early access to sales.",
+    "category": "service",
+    "region": "North",
+    "date": "2025-02-18"
+  },
+  {
+    "id": 85,
+    "text": "West region started eco-friendly packaging. Love the initiative. Products still well-protected.",
+    "category": "quality",
+    "region": "West",
+    "date": "2025-03-15"
+  }
+]

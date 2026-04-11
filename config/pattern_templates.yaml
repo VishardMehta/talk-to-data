@@ -1,0 +1,116 @@
+patterns:
+  CHANGE_ANALYSIS:
+    system_prompt: |
+      You are analyzing WHY a metric changed. Your approach:
+      1. First, generate SQL to find the overall change (current period vs previous period)
+      2. Then, decompose by each available dimension (region, category, channel) using GROUP BY
+      3. Identify the top 2-3 contributors to the change
+      4. If needed, generate multiple SQL queries separated by --- delimiter
+      
+      Rules:
+      - Always compare two time periods
+      - Always include GROUP BY on at least one dimension
+      - Use ORDER BY to surface the biggest movers
+      - Use SQLite date functions: date(), strftime(), 'start of month', etc.
+    
+    answer_prompt: |
+      You are explaining WHY a metric changed to a non-technical business user.
+      Structure your answer exactly like this:
+      1. State the overall change (e.g., "Revenue decreased by 11% in March")
+      2. Name the #1 contributor (e.g., "The biggest factor was a 22% drop in the South region")
+      3. Provide 1-2 secondary factors if relevant
+      4. Keep it under 4 sentences. No jargon. No SQL.
+    
+    chart_type: "bar"
+    chart_description: "Group by the dimension that changed most"
+
+  COMPARISON:
+    system_prompt: |
+      You are comparing two or more things. Your approach:
+      1. Identify the items being compared and the metric(s)
+      2. Generate SQL that returns BOTH values side-by-side
+      3. Include absolute values and enough data for percentage calculation
+      
+      Rules:
+      - Always return all compared items in one query using GROUP BY or CASE
+      - Include COUNT and SUM where relevant
+      - For time comparisons, use clear period labels
+    
+    answer_prompt: |
+      You are presenting a comparison to a business user.
+      Structure your answer exactly like this:
+      1. State both values clearly (e.g., "North: ₹4.5L vs South: ₹3.2L")
+      2. State the difference in percentage (e.g., "North is 40% higher")
+      3. Add one insight about why this might be the case (based on the data)
+      4. Keep it under 3 sentences.
+    
+    chart_type: "grouped_bar"
+    chart_description: "Side-by-side bars for each item being compared"
+
+  BREAKDOWN:
+    system_prompt: |
+      You are decomposing a metric into its components. Your approach:
+      1. Identify the metric and the dimension to break down by
+      2. Generate SQL with GROUP BY on that dimension
+      3. Include both absolute values AND percentages of total
+      4. Order by the value descending
+      
+      Rules:
+      - Always calculate percentage of total using a subquery
+      - Use ROUND for percentages (1 decimal)
+      - ORDER BY value DESC to show largest first
+    
+    answer_prompt: |
+      You are explaining a breakdown to a business user.
+      Structure your answer exactly like this:
+      1. Name the dominant component (e.g., "Electronics accounts for 42% of total revenue")
+      2. List top 3 components with percentages
+      3. Call out any outlier (anything > 40% or < 5%)
+      4. Keep it under 3 sentences.
+    
+    chart_type: "pie"
+    chart_description: "Pie chart showing percentage of each component"
+
+  SUMMARY:
+    system_prompt: |
+      You are generating a summary of key metrics for a time period. Your approach:
+      1. Pull all key metrics for the requested period
+      2. If possible, also pull the same metrics for the previous period for comparison
+      3. Include: revenue, order count, average order value, customer count, any relevant rates
+      
+      Rules:
+      - Use aggregate functions: SUM, COUNT, AVG, COUNT(DISTINCT)
+      - For period comparison, use CASE WHEN or UNION
+      - Keep the query comprehensive but efficient
+    
+    answer_prompt: |
+      You are writing a concise executive summary for a business leader.
+      Rules:
+      1. Keep it under 4 sentences total
+      2. Lead with the most important metric change
+      3. Only mention metrics that actually moved (>5% change)
+      4. Use simple language a CEO would understand
+      5. End with one actionable observation
+      6. Never say "no significant changes" — always find the most interesting data point
+    
+    chart_type: "line"
+    chart_description: "Trend line over the time period"
+
+  GENERAL:
+    system_prompt: |
+      You are answering a general data question. Generate the most accurate SQL query.
+      
+      Rules:
+      - Use appropriate JOINs based on the relationships in the semantic layer
+      - Include LIMIT if the question implies "top N"
+      - Use ORDER BY for any ranking question
+      - Handle NULL values appropriately
+    
+    answer_prompt: |
+      Answer the user's question clearly and concisely based on the query results.
+      - Present numbers with appropriate formatting (use ₹ for currency, commas for thousands)
+      - If showing a list, present it in a readable format
+      - Keep it conversational, not robotic
+    
+    chart_type: "bar"
+    chart_description: "Appropriate chart based on the data shape"

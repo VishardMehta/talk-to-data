@@ -1,0 +1,387 @@
+[
+  {
+    "id": 1,
+    "text": "Customer support was incredibly helpful when I had a question about my SoundBar Elite. Issue resolved in one call. Impressed!",
+    "sentiment": "positive",
+    "region": "South",
+    "date": "2024-09-02"
+  },
+  {
+    "id": 2,
+    "text": "Customer support was incredibly helpful when I had a question about my DryFit Running Set. Issue resolved in one call. Impressed!",
+    "sentiment": "neutral",
+    "region": "North",
+    "date": "2024-06-01"
+  },
+  {
+    "id": 3,
+    "text": "Customer support was incredibly helpful when I had a question about my Dal Makhani Ready Meal. Issue resolved in one call. Impressed!",
+    "sentiment": "positive",
+    "region": "West",
+    "date": "2024-09-10"
+  },
+  {
+    "id": 4,
+    "text": "Upgraded from a competitor's product to Non-Stick Cookware Set and the difference is night and day. Worth every rupee of \u20b94334.",
+    "sentiment": "positive",
+    "region": "East",
+    "date": "2024-07-03"
+  },
+  {
+    "id": 5,
+    "text": "The Silk Kurta Set is fantastic value for \u20b914269. Build quality is premium and it works perfectly. Highly recommend.",
+    "sentiment": "positive",
+    "region": "North",
+    "date": "2024-08-09"
+  },
+  {
+    "id": 6,
+    "text": "The SlimTab 10 is fantastic value for \u20b969117. Build quality is premium and it works perfectly. Highly recommend.",
+    "sentiment": "positive",
+    "region": "South",
+    "date": "2024-10-21"
+  },
+  {
+    "id": 7,
+    "text": "Customer support was incredibly helpful when I had a question about my Tinted Lip Balm Trio. Issue resolved in one call. Impressed!",
+    "sentiment": "positive",
+    "region": "North",
+    "date": "2025-03-24"
+  },
+  {
+    "id": 8,
+    "text": "The Cashew Combo Box is fantastic value for \u20b91015. Build quality is premium and it works perfectly. Highly recommend.",
+    "sentiment": "positive",
+    "region": "South",
+    "date": "2024-01-07"
+  },
+  {
+    "id": 9,
+    "text": "Returning customer here. Always satisfied with the quality. My latest Dal Makhani Ready Meal purchase was no exception. Keep it up!",
+    "sentiment": "positive",
+    "region": "North",
+    "date": "2024-02-07"
+  },
+  {
+    "id": 10,
+    "text": "Great experience with order #1547. BassBoost Headphones was exactly as described and arrived well-packaged. South delivery was swift!",
+    "sentiment": "positive",
+    "region": "South",
+    "date": "2024-09-26"
+  },
+  {
+    "id": 11,
+    "text": "The Beard Grooming Kit is fantastic value for \u20b91978. Build quality is premium and it works perfectly. Highly recommend.",
+    "sentiment": "positive",
+    "region": "East",
+    "date": "2024-03-31"
+  },
+  {
+    "id": 12,
+    "text": "The BassBoost Headphones is fantastic value for \u20b916204. Build quality is premium and it works perfectly. Highly recommend.",
+    "sentiment": "positive",
+    "region": "South",
+    "date": "2025-02-13"
+  },
+  {
+    "id": 13,
+    "text": "Absolutely love my WindBreaker Jacket! Delivered ahead of schedule to Ahmedabad. Quality exceeded expectations. Will definitely order again.",
+    "sentiment": "positive",
+    "region": "West",
+    "date": "2024-05-19"
+  },
+  {
+    "id": 14,
+    "text": "Returning customer here. Always satisfied with the quality. My latest SoundBar Elite purchase was no exception. Keep it up!",
+    "sentiment": "positive",
+    "region": "South",
+    "date": "2024-10-26"
+  },
+  {
+    "id": 15,
+    "text": "Returning customer here. Always satisfied with the quality. My latest Non-Stick Cookware Set purchase was no exception. Keep it up!",
+    "sentiment": "positive",
+    "region": "North",
+    "date": "2024-05-04"
+  },
+  {
+    "id": 16,
+    "text": "Upgraded from a competitor's product to BassBoost Headphones and the difference is night and day. Worth every rupee of \u20b923148.",
+    "sentiment": "positive",
+    "region": "South",
+    "date": "2024-11-12"
+  },
+  {
+    "id": 17,
+    "text": "Smooth ordering experience. WindBreaker Jacket delivered to Delhi in just 2 days. Tracking updates were accurate throughout.",
+    "sentiment": "positive",
+    "region": "North",
+    "date": "2024-11-20"
+  },
+  {
+    "id": 18,
+    "text": "Customer support was incredibly helpful when I had a question about my LED Desk Lamp. Issue resolved in one call. Impressed!",
+    "sentiment": "positive",
+    "region": "South",
+    "date": "2024-09-07"
+  },
+  {
+    "id": 19,
+    "text": "Returning customer here. Always satisfied with the quality. My latest Non-Stick Cookware Set purchase was no exception. Keep it up!",
+    "sentiment": "positive",
+    "region": "South",
+    "date": "2025-01-02"
+  },
+  {
+    "id": 20,
+    "text": "Great experience with order #596. SmartWatch Pro was exactly as described and arrived well-packaged. West delivery was swift!",
+    "sentiment": "positive",
+    "region": "West",
+    "date": "2024-05-01"
+  },
+  {
+    "id": 21,
+    "text": "Great experience with order #1868. SlimTab 10 was exactly as described and arrived well-packaged. North delivery was swift!",
+    "sentiment": "positive",
+    "region": "North",
+    "date": "2024-11-10"
+  },
+  {
+    "id": 22,
+    "text": "Smooth ordering experience. Retinol Night Serum delivered to Delhi in just 2 days. Tracking updates were accurate throughout.",
+    "sentiment": "positive",
+    "region": "North",
+    "date": "2024-11-17"
+  },
+  {
+    "id": 23,
+    "text": "Great experience with order #1804. Oxford Formal Shirt was exactly as described and arrived well-packaged. South delivery was swift!",
+    "sentiment": "positive",
+    "region": "South",
+    "date": "2024-11-01"
+  },
+  {
+    "id": 24,
+    "text": "Great experience with order #2649. UltraBook Laptop was exactly as described and arrived well-packaged. South delivery was swift!",
+    "sentiment": "neutral",
+    "region": "South",
+    "date": "2025-02-15"
+  },
+  {
+    "id": 25,
+    "text": "Best online shopping experience. SmartWatch Pro packaging was eco-friendly and the product itself is top-notch.",
+    "sentiment": "positive",
+    "region": "North",
+    "date": "2024-10-03"
+  },
+  {
+    "id": 26,
+    "text": "Returning customer here. Always satisfied with the quality. My latest Beard Grooming Kit purchase was no exception. Keep it up!",
+    "sentiment": "positive",
+    "region": "West",
+    "date": "2024-02-04"
+  },
+  {
+    "id": 27,
+    "text": "Best online shopping experience. Chino Trousers packaging was eco-friendly and the product itself is top-notch.",
+    "sentiment": "positive",
+    "region": "West",
+    "date": "2024-12-24"
+  },
+  {
+    "id": 28,
+    "text": "Customer support was incredibly helpful when I had a question about my UltraBook Laptop. Issue resolved in one call. Impressed!",
+    "sentiment": "positive",
+    "region": "South",
+    "date": "2025-03-15"
+  },
+  {
+    "id": 29,
+    "text": "Upgraded from a competitor's product to BassBoost Headphones and the difference is night and day. Worth every rupee of \u20b946297.",
+    "sentiment": "positive",
+    "region": "South",
+    "date": "2024-12-20"
+  },
+  {
+    "id": 30,
+    "text": "Absolutely love my SlimTab 10! Delivered ahead of schedule to Mumbai. Quality exceeded expectations. Will definitely order again.",
+    "sentiment": "positive",
+    "region": "West",
+    "date": "2024-01-19"
+  },
+  {
+    "id": 31,
+    "text": "Great experience with order #893. Classic Cotton Tee was exactly as described and arrived well-packaged. West delivery was swift!",
+    "sentiment": "positive",
+    "region": "West",
+    "date": "2024-06-21"
+  },
+  {
+    "id": 32,
+    "text": "Upgraded from a competitor's product to BassBoost Headphones and the difference is night and day. Worth every rupee of \u20b923148.",
+    "sentiment": "positive",
+    "region": "East",
+    "date": "2024-09-30"
+  },
+  {
+    "id": 33,
+    "text": "Best online shopping experience. Floral Maxi Dress packaging was eco-friendly and the product itself is top-notch.",
+    "sentiment": "positive",
+    "region": "North",
+    "date": "2024-06-23"
+  },
+  {
+    "id": 34,
+    "text": "The Wild Forest Honey 500g is fantastic value for \u20b92869. Build quality is premium and it works perfectly. Highly recommend.",
+    "sentiment": "positive",
+    "region": "North",
+    "date": "2024-12-12"
+  },
+  {
+    "id": 35,
+    "text": "Customer support was incredibly helpful when I had a question about my Multi-Tool Kit Pro. Issue resolved in one call. Impressed!",
+    "sentiment": "positive",
+    "region": "North",
+    "date": "2025-02-11"
+  },
+  {
+    "id": 36,
+    "text": "Smooth ordering experience. Classic Cotton Tee delivered to Hyderabad in just 2 days. Tracking updates were accurate throughout.",
+    "sentiment": "positive",
+    "region": "South",
+    "date": "2024-03-11"
+  },
+  {
+    "id": 37,
+    "text": "Upgraded from a competitor's product to SmartWatch Pro and the difference is night and day. Worth every rupee of \u20b9118049.",
+    "sentiment": "positive",
+    "region": "East",
+    "date": "2024-09-01"
+  },
+  {
+    "id": 38,
+    "text": "Smooth ordering experience. Chino Trousers delivered to Kolkata in just 2 days. Tracking updates were accurate throughout.",
+    "sentiment": "positive",
+    "region": "East",
+    "date": "2024-08-10"
+  },
+  {
+    "id": 39,
+    "text": "The USB-C Premium Cable is fantastic value for \u20b925068. Build quality is premium and it works perfectly. Highly recommend.",
+    "sentiment": "positive",
+    "region": "North",
+    "date": "2024-08-16"
+  },
+  {
+    "id": 40,
+    "text": "Customer support was incredibly helpful when I had a question about my Terracotta Planter Set. Issue resolved in one call. Impressed!",
+    "sentiment": "positive",
+    "region": "North",
+    "date": "2024-06-04"
+  },
+  {
+    "id": 41,
+    "text": "Customer support was incredibly helpful when I had a question about my Floral Maxi Dress. Issue resolved in one call. Impressed!",
+    "sentiment": "positive",
+    "region": "South",
+    "date": "2024-10-12"
+  },
+  {
+    "id": 42,
+    "text": "Best online shopping experience. Bamboo Towel Set packaging was eco-friendly and the product itself is top-notch.",
+    "sentiment": "positive",
+    "region": "North",
+    "date": "2024-12-04"
+  },
+  {
+    "id": 43,
+    "text": "Upgraded from a competitor's product to Oxford Formal Shirt and the difference is night and day. Worth every rupee of \u20b93869.",
+    "sentiment": "positive",
+    "region": "North",
+    "date": "2024-07-10"
+  },
+  {
+    "id": 44,
+    "text": "The Vitamin C Serum 30ml is fantastic value for \u20b97992. Build quality is premium and it works perfectly. Highly recommend.",
+    "sentiment": "positive",
+    "region": "West",
+    "date": "2024-08-17"
+  },
+  {
+    "id": 45,
+    "text": "Great experience with order #457. UltraBook Laptop was exactly as described and arrived well-packaged. North delivery was swift!",
+    "sentiment": "positive",
+    "region": "North",
+    "date": "2024-04-03"
+  },
+  {
+    "id": 46,
+    "text": "Great experience with order #1838. Merino Wool Sweater was exactly as described and arrived well-packaged. North delivery was swift!",
+    "sentiment": "neutral",
+    "region": "North",
+    "date": "2024-11-05"
+  },
+  {
+    "id": 47,
+    "text": "Best online shopping experience. BassBoost Headphones packaging was eco-friendly and the product itself is top-notch.",
+    "sentiment": "positive",
+    "region": "North",
+    "date": "2024-05-31"
+  },
+  {
+    "id": 48,
+    "text": "Smooth ordering experience. Multi-Tool Kit Pro delivered to Kolkata in just 2 days. Tracking updates were accurate throughout.",
+    "sentiment": "neutral",
+    "region": "East",
+    "date": "2024-12-25"
+  },
+  {
+    "id": 49,
+    "text": "The Floral Maxi Dress is fantastic value for \u20b913465. Build quality is premium and it works perfectly. Highly recommend.",
+    "sentiment": "positive",
+    "region": "South",
+    "date": "2024-08-20"
+  },
+  {
+    "id": 50,
+    "text": "Smooth ordering experience. Artisan Chocolate Box delivered to Jaipur in just 2 days. Tracking updates were accurate throughout.",
+    "sentiment": "neutral",
+    "region": "North",
+    "date": "2024-02-23"
+  },
+  {
+    "id": 51,
+    "text": "The Cold Brew Coffee Pack is fantastic value for \u20b93887. Build quality is premium and it works perfectly. Highly recommend.",
+    "sentiment": "positive",
+    "region": "North",
+    "date": "2024-10-02"
+  },
+  {
+    "id": 52,
+    "text": "Best online shopping experience. DigitalCam X200 packaging was eco-friendly and the product itself is top-notch.",
+    "sentiment": "positive",
+    "region": "East",
+    "date": "2024-01-27"
+  },
+  {
+    "id": 53,
+    "text": "Upgraded from a competitor's product to Premium Trail Mix and the difference is night and day. Worth every rupee of \u20b94338.",
+    "sentiment": "positive",
+    "region": "South",
+    "date": "2024-05-31"
+  },
+  {
+    "id": 54,
+    "text": "Customer support was incredibly helpful when I had a question about my SmartWatch Pro. Issue resolved in one call. Impressed!",
+    "sentiment": "positive",
+    "region": "West",
+    "date": "2025-01-29"
+  },
+  {
+    "id": 55,
+    "text": "Great experience with order #2257. SmartWatch Pro was exactly as described and arrived well-packaged. North delivery was swift!",
+    "sentiment": "positive",
+    "region": "North",
+    "date": "2024-12-29"
+  }
+]
