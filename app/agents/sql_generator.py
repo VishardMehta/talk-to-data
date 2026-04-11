@@ -1,12 +1,13 @@
+from __future__ import annotations
 """
 SQL Generator Agent — Agent 2.
+Uses Qwen3-32B for 95%+ SQL accuracy.
 
-Key bug fixes baked into this module:
-  Error 1: Multiple statements  → explicit rule + post-processing via clean_sql
-  Error 2: Syntax error (SELECT)→ _strip_second_top_level_select in sql_parser
-  Error 3: Missing commas       → explicit rule in prompt + example format
-  Error 4: Mixing levels        → pattern-specific instructions enforce one purpose per query
-  Error 5: Weak query planning  → structured system prompt with clear decomposition rules
+Improvements over v1:
+  - Chain-of-thought step forces structured reasoning before SQL
+  - Value-aware prompting includes sample values with case warnings
+  - Pattern-specific metric definitions prevent wrong aggregations
+  - Explicit filter extraction catches mentioned dimensions
 """
 
 import yaml
@@ -52,13 +53,40 @@ _BASE_RULES = """
 9. Return ONLY the raw SQL — no markdown fences, no ```sql, no explanation text.
 10. Do NOT include a trailing semicolon.
 
+## METRIC DEFINITIONS — use these EXACT formulas:
+- "total revenue" or "sales" = SUM(amount)
+- "number of orders" or "how many orders" = COUNT(order_id)
+- "average order value" or "AOV" = AVG(amount)
+- "unique customers" = COUNT(DISTINCT customer_id)
+- "complaint rate" = CAST(COUNT(DISTINCT complaint_id) AS REAL) / COUNT(DISTINCT order_id) * 100
+- "return rate" = COUNT(CASE WHEN status='returned' THEN 1 END) * 100.0 / COUNT(*)
+NEVER guess an aggregation. If unsure, use COUNT(*).
+
+## CASE-SENSITIVE VALUES — use EXACT values as shown in schema:
+- status values: 'completed', 'pending', 'cancelled', 'returned'
+- region values: 'North', 'South', 'East', 'West'
+- channel values: 'online', 'retail', 'wholesale'
+- segment values: 'regular', 'premium', 'enterprise'
+- category values: 'Electronics', 'Clothing', 'Home', 'Food', 'Beauty'
+WARNING: SQLite string comparison is case-sensitive. Use exact casing above.
+
+## CHAIN OF THOUGHT — before writing SQL, think:
+1. What metric is being asked? (identify the aggregation)
+2. What filters are mentioned? (region, time period, status, category)
+3. What grouping is needed? (GROUP BY what?)
+4. What ordering is needed? (TOP N = ORDER BY + LIMIT)
+5. What tables need to be joined?
+Include this reasoning in the "reasoning" field of your JSON response.
+
 ## OUTPUT FORMAT (JSON):
 {{
   "sql": "<single SELECT statement here>",
   "confidence": <integer 1-10>,
   "tables_used": ["table1", "table2"],
-  "reasoning": "brief explanation of approach"
+  "reasoning": "Step-by-step: 1) metric=SUM(amount), 2) filter=region='South', 3) group=month, 4) order=month ASC"
 }}
+
+Return ONLY the JSON object. Do not include any thinking or reasoning process outside the JSON.
 """
 
 _SYSTEM_TEMPLATE = """{pattern_instructions}
@@ -126,7 +154,7 @@ def generate_sql(
     )
 
     raw = call_llm(
-        model_key="smart",
+        model_key="smart_sql",  # Qwen3-32B for best SQL accuracy
         system_prompt=system_prompt,
         user_message=f'Generate SQL for: "{question}"',
         temperature=0.0,

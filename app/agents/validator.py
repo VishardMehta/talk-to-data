@@ -1,17 +1,20 @@
+from __future__ import annotations
 """
 SQL Validator — Agent 3.
 
-Validation pipeline (no LLM):
-  1. Clean / sanitize SQL (strips multiple statements — fixes Errors 1-3)
+Validation pipeline:
+  1. Clean / sanitize SQL (strips multiple statements)
   2. Safety check (SELECT only)
   3. Schema whitelist check
   4. Execute against SQLite
   5. Empty result check
+  6. NEW: Result verification (quick LLM sanity check)
 """
 
 import sqlite3
 from pathlib import Path
 from app.utils.sql_parser import clean_sql, extract_tables, is_select_only
+from app.core.groq_client import call_llm
 
 
 def validate_and_execute(sql: str, semantic_layer, db_path: str) -> dict:
@@ -52,15 +55,9 @@ def validate_and_execute(sql: str, semantic_layer, db_path: str) -> dict:
                 f"Table '{t}' does not exist. Available tables: {available}.",
             )
 
-    # Column whitelist (best-effort — only plain column refs, not expressions)
-    for t in used_tables:
-        valid_cols = set(semantic_layer.get_all_valid_columns(t))
-        # We skip column validation for tables whose columns we can't map easily
-
     # ------------------------------------------------------------------ #
     # Step 4 — Execute                                                    #
     # ------------------------------------------------------------------ #
-    # Resolve db_path relative to project root if it's a relative path
     if not Path(db_path).is_absolute():
         base = Path(__file__).resolve().parent.parent.parent
         db_path = str(base / db_path)
@@ -99,6 +96,45 @@ def validate_and_execute(sql: str, semantic_layer, db_path: str) -> dict:
         "error": None,
         "error_type": None,
     }
+
+
+def verify_result(question: str, sql: str, results: list, columns: list) -> dict:
+    """
+    Quick sanity check: does the SQL result actually answer the question?
+    Uses fast model (8B) for speed.
+    Returns: {"is_valid": bool, "issue": str or None}
+    """
+    if not results or not columns:
+        return {"is_valid": True, "issue": None}
+
+    preview = results[:5]
+    prompt = f"""User asked: "{question}"
+SQL executed: {sql}
+Result columns: {columns}
+Result preview (first 5 rows): {preview}
+Number of rows returned: {len(results)}
+
+Quick check — does this result answer the question?
+Common issues:
+- Did the SQL return the right columns for what was asked?
+- If they asked for "top 5", are there roughly 5 rows?
+- If they asked about a specific region/period, is it filtered?
+- Does the magnitude make sense? (revenue shouldn't be negative)
+
+Return JSON: {{"is_valid": true/false, "issue": "description or null"}}"""
+
+    try:
+        result = call_llm(
+            "fast",
+            "You are a SQL result validator. Check if the result answers the question. Return JSON only.",
+            prompt,
+            temperature=0.0,
+            json_mode=True,
+        )
+        return result
+    except Exception:
+        # If verification fails, don't block the pipeline
+        return {"is_valid": True, "issue": None}
 
 
 def _err(error_type: str, message: str) -> dict:

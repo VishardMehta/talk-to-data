@@ -1,3 +1,15 @@
+from __future__ import annotations
+"""
+Answer Generator — Agent 4.
+Uses Llama 3.3 70B for best natural language fluency.
+
+Key improvements:
+  - Insight-first answers (lead with the story, not the number)
+  - Indian number formatting (₹45L, ₹2.3Cr)
+  - Specific, context-aware follow-up questions
+  - No chart suggestion (handled by chart_generator now)
+"""
+
 import yaml
 from pathlib import Path
 from app.core.groq_client import call_llm
@@ -30,6 +42,34 @@ def _format_results(results: list, columns: list) -> str:
     return "\n".join([header, sep] + rows)
 
 
+# The core insight-first answer prompt
+_ANALYST_SYSTEM = """You are a sharp, senior data analyst presenting findings to a business executive.
+
+RULES:
+1. Lead with the INSIGHT, not the number. "The South region is dragging down overall growth" is better than "South region revenue is ₹12L."
+2. Format numbers for Indian readability:
+   - Under ₹1L: show exact (₹45,000)
+   - ₹1L-₹1Cr: use lakhs (₹45.2L)
+   - Above ₹1Cr: use crores (₹2.3Cr)
+   - For counts: use commas (1,234 orders)
+3. Always compare to something — a previous period, another region, an average. Raw numbers without context are meaningless.
+4. Use ONE strong sentence, not three weak ones.
+5. If the data shows something surprising or concerning, SAY SO. "This is unusual" or "This needs attention" adds value.
+6. End with a specific, actionable observation — not generic advice.
+7. NEVER say "Based on the data" or "According to the results" — just state the insight directly.
+8. Keep it under 3 sentences for simple queries, 4-5 for complex analysis.
+
+BAD: "The total revenue for Q1 is ₹4,500,000. The North region has the highest revenue at ₹1,800,000."
+GOOD: "Q1 revenue landed at ₹45L, but the real story is the South — at just ₹9L, it's pulling in half of what North generates. That's your gap to close."
+
+For follow-up suggestions, make them SPECIFIC to what the data showed:
+- If one region dominates → suggest investigating WHY
+- If there's a trend → suggest comparing with previous period
+- If there's an anomaly → suggest drilling into it
+- NEVER suggest generic questions like "Would you like more details?"
+"""
+
+
 def generate_answer(
     question: str,
     pattern: str,
@@ -40,7 +80,7 @@ def generate_answer(
 ) -> dict:
     templates = _get_templates()
     pattern_cfg = templates.get(pattern, templates.get("GENERAL", {}))
-    answer_instructions = pattern_cfg.get("answer_prompt", "Answer the question based on the data.")
+    pattern_answer_prompt = pattern_cfg.get("answer_prompt", "")
 
     # Build context sections
     data_section = ""
@@ -56,34 +96,33 @@ def generate_answer(
             region = d.get("region", "")
             date = d.get("date", "")
             doc_texts.append(f"- [{region} | {date}] {text}")
-        rag_section = "\n## Additional context from documents\n" + "\n".join(doc_texts) + "\n"
+        rag_section = "\n## Customer feedback & complaints\n" + "\n".join(doc_texts) + "\n"
 
     state_section = ""
     if conversation_state:
         state_section = f"\n## Conversation context\n{conversation_state}\n"
 
-    system_prompt = f"""{answer_instructions}
+    system_prompt = f"""{_ANALYST_SYSTEM}
+
+## PATTERN-SPECIFIC GUIDANCE
+{pattern_answer_prompt}
 
 {data_section}{rag_section}{state_section}
 Return ONLY valid JSON:
 {{
-  "answer": "<plain English answer>",
-  "follow_up_questions": ["<question 1>", "<question 2>"],
-  "chart_suggestion": {{
-    "type": "bar" | "grouped_bar" | "pie" | "line",
-    "x_column": "<column name from results>",
-    "y_column": "<column name from results>",
-    "title": "<chart title>"
-  }}
+  "answer": "<insight-first plain English answer>",
+  "follow_up_questions": ["<specific question based on what data showed>", "<another specific question>"]
 }}
+
+Do NOT include chart_suggestion — charts are handled separately.
 """
 
     user_message = f'Question: "{question}"'
     if sql_used:
-        user_message += f'\nSQL used: {sql_used[:300]}'
+        user_message += f"\nSQL used: {sql_used[:300]}"
 
     result = call_llm(
-        model_key="smart",
+        model_key="smart_answer",  # Llama 3.3 70B for best natural language
         system_prompt=system_prompt,
         user_message=user_message,
         temperature=0.3,
@@ -92,5 +131,6 @@ Return ONLY valid JSON:
 
     result.setdefault("answer", "I was unable to generate an answer.")
     result.setdefault("follow_up_questions", [])
+    # No chart_suggestion — handled by chart_generator deterministically
     result.setdefault("chart_suggestion", None)
     return result

@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 SQL Generator for Upload Mode — DuckDB-specific.
 Generates SQL for arbitrary uploaded CSV/Parquet files.
@@ -89,7 +90,7 @@ def generate_sql(
     )
 
     raw = call_llm(
-        model_key="smart",
+        model_key="smart_sql",  # Qwen3-32B for best SQL accuracy
         system_prompt=system_prompt,
         user_message=f'Generate DuckDB SQL for: "{question}"',
         temperature=0.0,
