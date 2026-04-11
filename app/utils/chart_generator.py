@@ -2,6 +2,7 @@
 Auto-generate Plotly charts from query results.
 Maps chart type suggestions from the answer generator to Plotly figures.
 """
+from __future__ import annotations
 
 import plotly.express as px
 import plotly.graph_objects as go

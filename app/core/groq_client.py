@@ -2,6 +2,7 @@
 Shared Groq client wrapper.
 All agents import from here for LLM calls.
 """
+from __future__ import annotations
 
 import os
 import json
@@ -13,8 +14,8 @@ load_dotenv()
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 MODELS = {
-    "fast": "llama-3.1-8b-instant",      # Router, fast tasks
-    "smart": "llama-3.3-70b-versatile",   # SQL gen, answer gen
+    "fast": "openai/gpt-oss-120b",      # Router, fast tasks
+    "smart": "openai/gpt-oss-120b",   # SQL gen, answer gen
 }
 
 

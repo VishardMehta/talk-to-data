@@ -4,6 +4,7 @@ FAISS-based vector store for three purposes:
 2. schema_index   — table selection for TAG (Table-Augmented Generation)
 3. verified_query_index — few-shot retrieval from golden queries
 """
+from __future__ import annotations
 
 import os
 import json

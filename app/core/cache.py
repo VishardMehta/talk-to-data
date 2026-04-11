@@ -3,6 +3,7 @@ Semantic cache using sentence-transformer embeddings.
 Caches question→answer pairs and retrieves them via cosine similarity
 to avoid redundant LLM calls for semantically similar questions.
 """
+from __future__ import annotations
 
 import time
 import numpy as np

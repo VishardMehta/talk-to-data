@@ -6,6 +6,7 @@ Multi-agent pipeline:
   Router → SQL Generator → Validator → Answer Generator
   with semantic cache, RAG, and conversation memory.
 """
+from __future__ import annotations
 
 import os
 import sys
@@ -377,7 +378,7 @@ def render_details(response: dict):
                     )
 
 
-def render_follow_ups(response: dict):
+def render_follow_ups(response: dict, msg_idx: int = 0):
     """Render follow-up question buttons."""
     follow_ups = response.get("follow_ups", [])
     if not follow_ups:
@@ -387,7 +388,7 @@ def render_follow_ups(response: dict):
     cols = st.columns(len(follow_ups[:3]))
     for i, (col, question) in enumerate(zip(cols, follow_ups[:3])):
         with col:
-            if st.button(question, key=f"followup_{len(st.session_state.messages)}_{i}"):
+            if st.button(question, key=f"followup_{msg_idx}_{i}"):
                 st.session_state.pending_followup = question
                 st.rerun()
 
@@ -465,7 +466,7 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # Display chat history
-for msg in st.session_state.messages:
+for msg_idx, msg in enumerate(st.session_state.messages):
     with st.chat_message(msg["role"]):
         if msg["role"] == "user":
             st.markdown(msg["content"])
@@ -477,7 +478,7 @@ for msg in st.session_state.messages:
                 st.markdown(response.get("answer", msg.get("content", "")))
                 render_chart(response)
                 render_details(response)
-                render_follow_ups(response)
+                render_follow_ups(response, msg_idx=msg_idx)
             else:
                 st.markdown(msg.get("content", ""))
 
@@ -511,7 +512,7 @@ if question:
         st.markdown(response.get("answer", ""))
         render_chart(response)
         render_details(response)
-        render_follow_ups(response)
+        render_follow_ups(response, msg_idx=len(st.session_state.messages) + 999)
 
     # Store assistant message
     st.session_state.messages.append({

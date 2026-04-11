@@ -5,6 +5,7 @@ Generates SQL queries from natural language using the 70B model.
 Takes semantic layer context, pattern templates, and verified query examples
 to produce accurate SQLite-compatible SQL.
 """
+from __future__ import annotations
 
 import os
 import yaml

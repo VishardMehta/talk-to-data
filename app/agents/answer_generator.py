@@ -5,6 +5,7 @@ Synthesizes natural language answers from SQL results and/or RAG documents.
 Uses Llama 3.3 70B with pattern-specific prompts to produce
 clear, business-friendly answers with chart suggestions and follow-ups.
 """
+from __future__ import annotations
 
 import os
 import yaml

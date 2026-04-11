@@ -4,6 +4,7 @@ structured access to table schemas, relationships, metrics, and filters.
 
 Used by SQL generator to build accurate, context-rich prompts.
 """
+from __future__ import annotations
 
 import os
 import yaml

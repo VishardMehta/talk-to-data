@@ -2,6 +2,7 @@
 Conversation state management for multi-turn support.
 Tracks the current topic, last query context, and enables follow-up questions.
 """
+from __future__ import annotations
 
 
 class ConversationState:
