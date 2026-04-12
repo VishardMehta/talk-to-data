@@ -1,4 +1,4 @@
-# 🗣️ Talk to Data — Multi-Agent AI Analytics Platform
+<img width="1367" height="176" alt="image" src="https://github.com/user-attachments/assets/7435fb99-6cdd-4dcb-abc5-0f0ac1b96206" /># 🗣️ Talk to Data — Multi-Agent AI Analytics Platform
 
 > Ask questions about your data in plain English. Get instant, accurate answers with charts, insights, and full transparency — powered by a custom multi-agent AI pipeline.
 
@@ -45,7 +45,6 @@ The intended users are **non-technical business stakeholders** (product managers
 - **Premium dark UI** — A ChatGPT-inspired dark glassmorphism interface with smooth animations, built with React 19 + Framer Motion.
 
 ### Data Capabilities
-- **Multi-file upload with join detection** — Upload multiple CSV/Parquet files; the system auto-detects common columns and suggests joins.
 - **DuckDB engine for uploads** — Uploaded files are queried via DuckDB (in-memory) for high-performance analytical queries without needing a database setup.
 - **Pre-seeded demo dataset** — 2000+ orders, 200 customers, 50 products, and 300 complaints with a realistic e-commerce story (revenue drop in South region due to delivery issues).
 
@@ -327,7 +326,8 @@ User Question
 ---
 
 ## 🔮 Future Improvements
-
+- **Multi-file upload with join detection** — Upload multiple CSV and `.db` files; the system auto-detects common columns and suggests joins.
+- **Currently supports CSV and `.db`** — other formats are not yet supported adn will be added later.
 - **Persistent vector store** — Save FAISS indexes to disk to avoid re-indexing on every restart.
 - **Live database connectors** — Support connecting to PostgreSQL, MySQL, or BigQuery for real-time querying.
 - **Multi-user authentication** — Add user accounts with session isolation and query history.
