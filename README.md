@@ -1,4 +1,4 @@
-<![CDATA[# 🗣️ Talk to Data — Multi-Agent AI Analytics Platform
+# 🗣️ Talk to Data — Multi-Agent AI Analytics Platform
 
 > Ask questions about your data in plain English. Get instant, accurate answers with charts, insights, and full transparency — powered by a custom multi-agent AI pipeline.
 
@@ -435,4 +435,3 @@ This provides context-aware behavior without fine-tuning the LLM.
 ---
 
 *Built for the NatWest Code for Purpose — India Hackathon 2026*
-]]>
