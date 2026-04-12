@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Auto-generate semantic context for uploaded files.
 Profile once on upload, cache in session state.

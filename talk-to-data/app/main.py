@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Talk to Data — Streamlit Chat UI
 Entry point: streamlit run app/main.py

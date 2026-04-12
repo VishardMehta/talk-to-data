@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 FastAPI server for Talk to Data — React frontend integration.
 Run: uvicorn app.api_server:app --reload --port 8000

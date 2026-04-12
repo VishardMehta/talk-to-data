@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 SQL Generator for Upload Mode — DuckDB-specific.
 Generates SQL for arbitrary uploaded CSV/Parquet files.

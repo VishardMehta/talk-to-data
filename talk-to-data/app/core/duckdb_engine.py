@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 DuckDB engine for upload mode.
 Handles CSV/Parquet file profiling and query execution.

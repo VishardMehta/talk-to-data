@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 SQL parsing utilities using regex only (no sqlparse dependency).
 

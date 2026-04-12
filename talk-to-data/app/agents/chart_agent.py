@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Agent 5 — Chart Agent
 

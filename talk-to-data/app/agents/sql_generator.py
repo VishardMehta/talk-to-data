@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 SQL Generator Agent — Agent 2.
 

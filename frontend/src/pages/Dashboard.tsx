@@ -13,6 +13,7 @@ import {
 import Sidebar from "@/components/Sidebar";
 import ChatMessage from "@/components/ChatMessage";
 import ThinkingDisplay from "@/components/ThinkingDisplay";
+import FileUpload from "@/components/ui/file-upload";
 import { ShiningText } from "@/components/ui/shining-text";
 import {
   Sparkles,
@@ -67,15 +68,16 @@ export default function Dashboard() {
   } = useAppStore();
 
   const [inputValue, setInputValue] = useState("");
-  const [selectedSource, setSelectedSource] = useState<DataSource>(null);
+  const [selectedSource, setSelectedSource] = useState<DataSource>("sample");
   const [file, setFile] = useState<File | null>(null);
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<(() => void) | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isEmpty = messages.length === 0;
-  const activeSource = dataSource ?? selectedSource;
+  const activeSource = dataSource ?? selectedSource ?? "sample";
   const needsUpload = activeSource === "csv" || activeSource === "database" || activeSource === "json";
   const canSubmit =
     inputValue.trim().length > 0 &&
@@ -223,7 +225,7 @@ export default function Dashboard() {
      SHARED INPUT BOX — exact same component
      ═══════════════════════════════════════════ */
   const renderInputBox = (placeholder: string) => (
-    <div className="bg-[#2f2f2f] rounded-2xl border border-[#424242] focus-within:border-[#555] transition-colors overflow-hidden">
+    <div className="bg-[#2f2f2f] rounded-xl border border-[#424242] focus-within:border-[#555] transition-colors overflow-hidden">
       <textarea
         ref={textareaRef}
         value={inputValue}
@@ -232,22 +234,18 @@ export default function Dashboard() {
         disabled={isLoading}
         rows={1}
         placeholder={placeholder}
-        className="w-full resize-none bg-transparent px-5 pt-4 pb-3 text-[15px] text-[#ececec] placeholder-[#6b6b6b] focus:outline-none leading-relaxed"
+        className="w-full resize-none bg-transparent px-9 pt-5 pb-3 text-[15px] text-[#ececec] placeholder-[#6b6b6b] focus:outline-none leading-relaxed"
         style={{ minHeight: 52 }}
       />
-      <div className="flex items-center justify-between px-3 py-2">
+      <div className="flex items-center justify-between px-4 py-2.5">
         <div className="flex items-center gap-1">
-          <input ref={fileInputRef} type="file" className="hidden"
-            accept={SOURCE_OPTIONS.find((o) => o.id === activeSource)?.accept ?? "*"}
-            onChange={(e) => { if (e.target.files?.[0]) handleFile(e.target.files[0]); }}
-          />
-          <button onClick={() => fileInputRef.current?.click()}
-            className="w-9 h-9 flex items-center justify-center rounded-xl text-[#6b6b6b] hover:text-white hover:bg-[#424242] transition-colors cursor-pointer" title="Attach file">
+          <button onClick={() => setIsUploadOpen(true)}
+            className="w-9 h-9 flex items-center justify-center rounded-lg text-[#6b6b6b] hover:text-white hover:bg-[#424242] transition-colors cursor-pointer" title="Attach data file">
             <Plus className="w-5 h-5" />
           </button>
         </div>
         <button onClick={handleSubmit} disabled={!canSubmit}
-          className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 ${
+          className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 ${
             canSubmit ? "bg-white text-[#212121] hover:bg-gray-200 cursor-pointer" : "bg-[#424242] text-[#6b6b6b] cursor-not-allowed"
           }`}>
           <ArrowUp className="w-5 h-5" />
@@ -261,8 +259,20 @@ export default function Dashboard() {
      ═══════════════════════════════════════════ */
   if (isEmpty && !isLoading) {
     return (
-      <div className="flex h-screen bg-[#212121] overflow-hidden">
+      <div className="flex h-screen bg-[#212121] overflow-hidden relative">
         <Sidebar onSuggestion={handleSuggestion} />
+        
+        <AnimatePresence>
+          {isUploadOpen && (
+            <FileUpload
+              onFileSelected={(f) => {
+                handleFile(f);
+                setIsUploadOpen(false);
+              }}
+              onClose={() => setIsUploadOpen(false)}
+            />
+          )}
+        </AnimatePresence>
 
         <main className="flex-1 flex items-center justify-center">
           <div className="w-full max-w-[680px] px-6">
@@ -291,7 +301,7 @@ export default function Dashboard() {
               >
                 {SUGGESTIONS.map((s) => (
                   <button key={s} onClick={() => handleSuggestion(s)}
-                    className="px-4 py-2.5 bg-[#2f2f2f] hover:bg-[#3a3a3a] border border-[#424242] hover:border-[#555] rounded-xl text-[14px] text-[#b4b4b4] hover:text-white transition-all duration-150 cursor-pointer">
+                    className="px-4 py-2.5 bg-[#2f2f2f] hover:bg-[#3a3a3a] border border-[#424242] hover:border-[#555] rounded-lg text-[14px] text-[#b4b4b4] hover:text-white transition-all duration-150 cursor-pointer">
                     {s}
                   </button>
                 ))}
@@ -320,31 +330,7 @@ export default function Dashboard() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15, duration: 0.4 }}
             >
-              {renderInputBox(
-                activeSource ? "Ask anything about your data..." : "Select a data source below, then ask..."
-              )}
-            </motion.div>
-
-            {/* Data source pills — centered */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.25, duration: 0.3 }}
-              className="flex items-center justify-center gap-2.5 mt-4 flex-wrap"
-            >
-              {SOURCE_OPTIONS.map((opt) => {
-                const Icon = opt.icon;
-                const isSelected = activeSource === opt.id;
-                return (
-                  <button key={opt.id} onClick={() => handleSelectSource(opt.id)}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[14px] font-medium transition-all duration-150 border cursor-pointer ${
-                      isSelected ? "bg-[#3a3a3a] border-[#555] text-white" : "bg-transparent border-[#424242] text-[#6b6b6b] hover:bg-[#2f2f2f] hover:text-[#b4b4b4] hover:border-[#555]"
-                    }`}>
-                    <Icon className="w-4 h-4" />
-                    <span>{opt.label}</span>
-                  </button>
-                );
-              })}
+              {renderInputBox("Ask anything about your data...")}
             </motion.div>
           </div>
         </main>
@@ -356,8 +342,20 @@ export default function Dashboard() {
      CHAT VIEW — messages + centered bottom input
      ═══════════════════════════════════════════ */
   return (
-    <div className="flex h-screen bg-[#212121] overflow-hidden">
+    <div className="flex h-screen bg-[#212121] overflow-hidden relative">
       <Sidebar onSuggestion={handleSuggestion} />
+
+      <AnimatePresence>
+        {isUploadOpen && (
+          <FileUpload
+            onFileSelected={(f) => {
+              handleFile(f);
+              setIsUploadOpen(false);
+            }}
+            onClose={() => setIsUploadOpen(false)}
+          />
+        )}
+      </AnimatePresence>
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Chat scroll area */}

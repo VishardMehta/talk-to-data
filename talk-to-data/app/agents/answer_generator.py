@@ -1,3 +1,4 @@
+from __future__ import annotations
 import yaml
 from pathlib import Path
 from app.core.groq_client import call_llm
