@@ -20,6 +20,11 @@ const revenueByMonth: QueryResult = {
   x_key: "month",
   y_key: "revenue",
   table_name: "orders",
+  follow_ups: [
+    "Break this down by region",
+    "Which month had the highest growth?",
+    "Compare with last year",
+  ],
 };
 
 const regionBreakdown: QueryResult = {
@@ -58,6 +63,11 @@ const topCities: QueryResult = {
   x_key: "city",
   y_key: "revenue",
   table_name: "orders",
+  follow_ups: [
+    "Show trend for Mumbai",
+    "Which segment performs best?",
+    "Revenue by region",
+  ],
 };
 
 const categoryBreakdown: QueryResult = {
@@ -75,6 +85,11 @@ const categoryBreakdown: QueryResult = {
   name_key: "name",
   value_key: "value",
   table_name: "products",
+  follow_ups: [
+    "Show Electronics trend over time",
+    "Top products in Electronics",
+    "Which region buys most Electronics?",
+  ],
 };
 
 const totalRevenue: QueryResult = {
@@ -85,6 +100,12 @@ const totalRevenue: QueryResult = {
   x_key: "metric",
   y_key: "value",
   table_name: "orders",
+  follow_ups: [
+    "Break this down by region",
+    "Show trend over time",
+    "Which category contributes most?",
+    "Compare with last quarter",
+  ],
 };
 
 const defaultResult: QueryResult = {

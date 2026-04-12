@@ -8,9 +8,10 @@ import { cn } from "@/lib/utils";
 
 interface ChatMessageProps {
   message: Message;
+  onFollowUp?: (q: string) => void;
 }
 
-export default function ChatMessage({ message }: ChatMessageProps) {
+export default function ChatMessage({ message, onFollowUp }: ChatMessageProps) {
   const [copied, setCopied] = useState(false);
   const [liked, setLiked] = useState<"up" | "down" | null>(null);
 
@@ -29,46 +30,44 @@ export default function ChatMessage({ message }: ChatMessageProps) {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25 }}
-        className="flex justify-end px-4"
+        className="flex justify-end"
       >
-        <div className="flex items-end gap-2 max-w-md">
-          <div className="bg-gradient-to-br from-indigo-600 to-violet-600 text-white px-4 py-2.5 rounded-2xl rounded-br-sm text-sm font-medium shadow-sm shadow-indigo-100">
+        <div className="flex items-end gap-3 max-w-lg">
+          <div className="bg-[#2f2f2f] text-[#ececec] px-5 py-3 rounded-2xl rounded-br-md text-[15px] leading-relaxed border border-[#424242]">
             {message.content}
           </div>
-          <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 mb-0.5">
-            <User className="w-3.5 h-3.5 text-gray-600" />
+          <div className="w-8 h-8 rounded-full bg-[#2f2f2f] flex items-center justify-center flex-shrink-0 mb-0.5 border border-[#424242]">
+            <User className="w-4 h-4 text-[#b4b4b4]" />
           </div>
         </div>
       </motion.div>
     );
   }
 
-  // Assistant message
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="flex gap-3 px-4 group"
+      className="flex gap-4 group"
     >
       {/* Avatar */}
-      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm">
-        <Sparkles className="w-3.5 h-3.5 text-white" />
+      <div className="w-8 h-8 rounded-full bg-[#2f2f2f] flex items-center justify-center flex-shrink-0 mt-0.5 border border-[#424242]">
+        <Sparkles className="w-4 h-4 text-[#b4b4b4]" />
       </div>
 
-      <div className="flex-1 space-y-3 min-w-0">
-        {/* Thinking steps (collapsed once answer is shown) */}
+      <div className="flex-1 space-y-4 min-w-0">
+        {/* Thinking steps */}
         {message.thinkingSteps && message.thinkingSteps.length > 0 && (
           <ThinkingDisplay steps={message.thinkingSteps} isThinking={false} />
         )}
 
-        {/* Answer card (rich result) */}
+        {/* Answer */}
         {message.queryResult ? (
           <AnswerCard result={message.queryResult} />
         ) : (
-          /* Plain text fallback */
           message.content && (
-            <div className="bg-white border border-gray-100 rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-gray-700 leading-relaxed shadow-sm">
+            <div className="text-[15px] text-[#ececec] leading-[1.75]">
               {message.content}
             </div>
           )
@@ -76,45 +75,34 @@ export default function ChatMessage({ message }: ChatMessageProps) {
 
         {/* Actions */}
         <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-          <span className="text-xs text-gray-400">
-            {message.timestamp.toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
+          <span className="text-xs text-[#6b6b6b]">
+            {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </span>
           <div className="flex items-center gap-1">
             <button
               onClick={copyText}
-              className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-[#6b6b6b] hover:text-white hover:bg-[#2f2f2f] transition-colors cursor-pointer"
             >
-              {copied ? (
-                <Check className="w-3 h-3 text-emerald-500" />
-              ) : (
-                <Copy className="w-3 h-3" />
-              )}
+              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
               <span>{copied ? "Copied" : "Copy"}</span>
             </button>
             <button
               onClick={() => setLiked(liked === "up" ? null : "up")}
               className={cn(
-                "p-1.5 rounded-lg transition-colors",
-                liked === "up"
-                  ? "text-emerald-600 bg-emerald-50"
-                  : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                "p-2 rounded-lg transition-colors cursor-pointer",
+                liked === "up" ? "text-emerald-400 bg-emerald-500/10" : "text-[#6b6b6b] hover:text-white hover:bg-[#2f2f2f]"
               )}
             >
-              <ThumbsUp className="w-3 h-3" />
+              <ThumbsUp className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => setLiked(liked === "down" ? null : "down")}
               className={cn(
-                "p-1.5 rounded-lg transition-colors",
-                liked === "down"
-                  ? "text-red-500 bg-red-50"
-                  : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                "p-2 rounded-lg transition-colors cursor-pointer",
+                liked === "down" ? "text-red-400 bg-red-500/10" : "text-[#6b6b6b] hover:text-white hover:bg-[#2f2f2f]"
               )}
             >
-              <ThumbsDown className="w-3 h-3" />
+              <ThumbsDown className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
