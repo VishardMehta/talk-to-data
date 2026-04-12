@@ -110,23 +110,64 @@ def generate_sql(
     verified_query: dict | None,
     conversation_state: str,
     error_feedback: str = None,
+    query_hints: list[str] = None,
 ) -> dict:
     templates = _get_templates()
     pattern_cfg = templates.get(pattern, templates.get("GENERAL", {}))
     pattern_instructions = pattern_cfg.get("system_prompt", "Generate accurate SQL.")
 
     # Few-shot example
+    # Bug fix: the old default was always "Show total revenue by region" which
+    # biased the SQL generator toward GROUP BY region revenue queries even for
+    # unrelated questions (e.g. "count of regions", "list customers").
+    # Now: pick a default that matches the pattern, not one generic example.
+    _PATTERN_DEFAULTS = {
+        "GENERAL": (
+            "How many distinct regions are there?",
+            "SELECT COUNT(DISTINCT region) AS region_count\nFROM orders",
+        ),
+        "BREAKDOWN": (
+            "Show revenue breakdown by region",
+            "SELECT region, SUM(amount) AS revenue,\n"
+            "       ROUND(SUM(amount) * 100.0 / (SELECT SUM(amount) FROM orders WHERE status='completed'), 1) AS pct\n"
+            "FROM orders\nWHERE status = 'completed'\nGROUP BY region\nORDER BY revenue DESC",
+        ),
+        "COMPARISON": (
+            "Compare North vs South revenue",
+            "SELECT region, SUM(amount) AS total_revenue, COUNT(*) AS total_orders\n"
+            "FROM orders\nWHERE region IN ('North','South') AND status='completed'\nGROUP BY region",
+        ),
+        "CHANGE_ANALYSIS": (
+            "Why did revenue drop last month?",
+            "SELECT strftime('%Y-%m', order_date) AS month, SUM(amount) AS revenue, COUNT(*) AS order_count\n"
+            "FROM orders\nWHERE order_date >= date('now','-2 months') AND status='completed'\n"
+            "GROUP BY month\nORDER BY month",
+        ),
+        "SUMMARY": (
+            "Give me a summary of key metrics",
+            "SELECT SUM(amount) AS total_revenue, COUNT(*) AS total_orders,\n"
+            "       AVG(amount) AS avg_order_value, COUNT(DISTINCT customer_id) AS unique_customers\n"
+            "FROM orders\nWHERE order_date >= date('now','start of month')",
+        ),
+    }
+
     if verified_query:
         example_question = verified_query.get("question", "")
         example_sql = verified_query.get("sql", "").strip()
     else:
-        example_question = "Show total revenue by region"
-        example_sql = (
-            "SELECT region, SUM(amount) AS revenue\n"
-            "FROM orders\n"
-            "WHERE status = 'completed'\n"
-            "GROUP BY region\n"
-            "ORDER BY revenue DESC"
+        default_q, default_sql = _PATTERN_DEFAULTS.get(
+            pattern, _PATTERN_DEFAULTS["GENERAL"]
+        )
+        example_question = default_q
+        example_sql = default_sql
+
+    # Query classifier hints section
+    hints_section = ""
+    if query_hints:
+        hints_section = (
+            "## QUERY CLASSIFICATION HINTS (read carefully before writing SQL)\n"
+            + "\n".join(f"- {h}" for h in query_hints)
+            + "\n\n"
         )
 
     # Error feedback section (retry path)
@@ -148,7 +189,7 @@ def generate_sql(
         semantic_context=semantic_context,
         example_question=example_question,
         example_sql=example_sql,
-        error_section=error_section,
+        error_section=hints_section + error_section,
         state_section=state_section,
         base_rules=_BASE_RULES,
     )

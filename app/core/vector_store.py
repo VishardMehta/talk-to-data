@@ -127,19 +127,43 @@ class VectorStore:
         return tables
 
     def find_similar_query(self, question: str, pattern: str = None) -> dict | None:
+        """
+        Find the best verified query example for few-shot SQL generation.
+
+        Bugs fixed:
+          1. Minimum score threshold added (0.75) — previously any result was
+             returned even with near-zero similarity, giving the SQL generator
+             a misleading example.
+          2. Fallback to wrong pattern removed — previously, when no entry
+             matched the requested pattern in the top-10, the method returned
+             the highest-scoring entry regardless of pattern.  This caused a
+             COUNT query (GENERAL pattern) to receive a CHANGE_ANALYSIS
+             example and produce time-series SQL instead of COUNT SQL.
+             Fix: return None when no pattern match found above threshold.
+             The SQL generator has a safe default and handles None correctly.
+        """
         if self._query_index is None or self._query_index.ntotal == 0:
             return None
+
         vec = self._embed([question])
         k = min(10, self._query_index.ntotal)
         scores, indices = self._query_index.search(vec, k)
+
+        # Minimum similarity — don't use a dissimilar example as few-shot
+        MIN_SCORE = 0.75
+
         for score, idx in zip(scores[0], indices[0]):
             if idx < 0:
                 continue
+            if score < MIN_SCORE:
+                # FAISS returns results in descending score order; once we
+                # drop below the threshold we can stop scanning.
+                break
             entry = self._query_entries[idx]
             if pattern is None or entry.get("pattern") == pattern:
                 return entry
-        # Fallback: return top result regardless of pattern
-        best_idx = indices[0][0]
-        if best_idx >= 0:
-            return self._query_entries[best_idx]
+
+        # No match above threshold for the requested pattern.
+        # Return None rather than a wrong-pattern example that would mislead
+        # the SQL generator into producing the wrong query structure.
         return None

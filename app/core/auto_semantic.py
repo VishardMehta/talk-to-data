@@ -73,6 +73,48 @@ def _format_columns_with_stats(columns: dict) -> str:
     return "\n".join(lines)
 
 
+def _build_fallback_semantic(schema_profile: dict) -> dict:
+    """Rule-based fallback when LLM enrichment fails. Infers metric/dimension from type."""
+    columns = {}
+    numeric_types = {"INTEGER", "BIGINT", "HUGEINT", "SMALLINT", "DOUBLE",
+                     "FLOAT", "DECIMAL", "NUMERIC", "REAL"}
+    date_types = {"DATE", "TIMESTAMP", "TIMESTAMPTZ"}
+
+    for col_name, col_info in schema_profile["columns"].items():
+        base_type = col_info["type"].split("(")[0].strip().upper()
+        is_metric = base_type in numeric_types
+        is_date = base_type in date_types
+        is_dimension = not is_metric and not is_date
+        columns[col_name] = {
+            "description": col_name.replace("_", " ").title(),
+            "is_metric": is_metric,
+            "is_dimension": is_dimension,
+            "is_date": is_date,
+        }
+
+    return {
+        "table_description": f"Dataset with {schema_profile['total_rows']} rows",
+        "columns": columns,
+        "suggested_metrics": [],
+        "suggested_questions": [],
+        "column_aliases": {},
+    }
+
+
+def _build_basic_context(schema_profile: dict) -> str:
+    """Minimal enriched context when full context builder fails."""
+    read_fn = schema_profile["read_fn"]
+    lines = [
+        f"-- Source: {read_fn}",
+        f"-- Total rows: {schema_profile['total_rows']}",
+        f"-- Query using: SELECT ... FROM {read_fn}",
+        "-- Schema:",
+    ]
+    for col_name, col_info in schema_profile["columns"].items():
+        lines.append(f'-- "{col_name}" ({col_info["type"]})')
+    return "\n".join(lines)
+
+
 def _generate_auto_semantic(schema_profile: dict) -> dict:
     """One LLM call to enrich schema with descriptions, metrics, aliases."""
     col_stats = _format_columns_with_stats(schema_profile["columns"])
@@ -296,37 +338,40 @@ class AutoSemantic:
         if filepath in self._cache:
             return self._cache[filepath]
 
-        # Step 1: DuckDB profiling
+        # Step 1: DuckDB profiling — MUST succeed or we can't do anything
         print(f"[auto_semantic] Step 1: profiling {filepath}")
         schema_profile = self.engine.register_file(filepath)
-        print(f"[auto_semantic] Step 1 done: {schema_profile['total_rows']} rows, {len(schema_profile['columns'])} columns")
+        print(f"[auto_semantic] Step 1 done: {schema_profile['total_rows']} rows, "
+              f"{len(schema_profile['columns'])} columns: {list(schema_profile['columns'].keys())}")
 
-        # Step 2: LLM semantic enrichment
+        # Step 2: LLM semantic enrichment — graceful fallback if fails
         print(f"[auto_semantic] Step 2: LLM enrichment")
         try:
             auto_semantic = _generate_auto_semantic(schema_profile)
+            cols_type = type(auto_semantic.get("columns"))
+            print(f"[auto_semantic] Step 2 done: columns type={cols_type}, "
+                  f"keys={list(auto_semantic.get('columns', {}).keys())[:5]}")
         except Exception as e:
-            print(f"[auto_semantic] Step 2 FAILED: {e}")
-            raise RuntimeError(f"LLM enrichment failed: {e}") from e
+            print(f"[auto_semantic] Step 2 FAILED (using fallback): {e}")
+            # Build minimal auto_semantic from schema profile without LLM
+            auto_semantic = _build_fallback_semantic(schema_profile)
+            print(f"[auto_semantic] Step 2 fallback applied")
 
-        cols_type = type(auto_semantic.get("columns"))
-        print(f"[auto_semantic] Step 2 done: columns type={cols_type}, keys={list(auto_semantic.get('columns', {}).keys())[:5]}")
-
-        # Step 3: Auto verified queries
+        # Step 3: Auto verified queries — graceful fallback if fails
         print(f"[auto_semantic] Step 3: generating verified queries")
         try:
             verified_queries = _generate_auto_verified_queries(filepath, schema_profile, auto_semantic)
         except Exception as e:
-            print(f"[auto_semantic] Step 3 FAILED: {e}, columns={auto_semantic.get('columns')}")
-            raise RuntimeError(f"Verified query generation failed: {e}") from e
+            print(f"[auto_semantic] Step 3 FAILED (using empty list): {e}")
+            verified_queries = []
 
-        # Step 4: Build enriched context
+        # Step 4: Build enriched context — graceful fallback if fails
         print(f"[auto_semantic] Step 4: building enriched context")
         try:
             enriched_context = _build_enriched_context(schema_profile, auto_semantic)
         except Exception as e:
-            print(f"[auto_semantic] Step 4 FAILED: {e}, sem_cols type={type(auto_semantic.get('columns'))}")
-            raise RuntimeError(f"Context building failed: {e}") from e
+            print(f"[auto_semantic] Step 4 FAILED (using basic context): {e}")
+            enriched_context = _build_basic_context(schema_profile)
 
         col_names = ", ".join(list(schema_profile["columns"].keys())[:10])
         schema_summary = (

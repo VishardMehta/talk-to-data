@@ -18,6 +18,8 @@ class DuckDBEngine:
         fp = filepath.replace("\\", "/")
         if ext == ".parquet":
             return f"read_parquet('{fp}')"
+        if ext == ".json":
+            return f"read_json_auto('{fp}')"
         return f"read_csv_auto('{fp}')"
 
     def register_file(self, filepath: str) -> dict:

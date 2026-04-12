@@ -33,8 +33,11 @@ interface AppState {
   uploadedFile: File | null;
   uploadedFileName: string | null;
   sessionId: string;
+  datasetId: string;
   messages: Message[];
   isLoading: boolean;
+  isUploading: boolean;
+  uploadError: string | null;
   thinkingSteps: ThinkingStep[];
   sidebarCollapsed: boolean;
   backendAvailable: boolean;
@@ -44,6 +47,8 @@ interface AppState {
   addMessage: (msg: Message) => void;
   updateMessage: (id: string, patch: Partial<Message>) => void;
   setLoading: (v: boolean) => void;
+  setUploading: (v: boolean) => void;
+  setUploadError: (msg: string | null) => void;
   setThinkingSteps: (steps: ThinkingStep[]) => void;
   addThinkingStep: (step: ThinkingStep) => void;
   updateThinkingStep: (id: string, patch: Partial<ThinkingStep>) => void;
@@ -51,6 +56,7 @@ interface AppState {
   toggleSidebar: () => void;
   clearChat: () => void;
   setBackendAvailable: (v: boolean) => void;
+  resetForNewDataset: () => void;
 }
 
 function generateSessionId() {
@@ -62,8 +68,11 @@ export const useAppStore = create<AppState>((set) => ({
   uploadedFile: null,
   uploadedFileName: null,
   sessionId: generateSessionId(),
+  datasetId: generateSessionId(),
   messages: [],
   isLoading: false,
+  isUploading: false,
+  uploadError: null,
   thinkingSteps: [],
   sidebarCollapsed: false,
   backendAvailable: false,
@@ -77,6 +86,8 @@ export const useAppStore = create<AppState>((set) => ({
       messages: s.messages.map((m) => (m.id === id ? { ...m, ...patch } : m)),
     })),
   setLoading: (v) => set({ isLoading: v }),
+  setUploading: (v) => set({ isUploading: v }),
+  setUploadError: (msg) => set({ uploadError: msg }),
   setThinkingSteps: (steps) => set({ thinkingSteps: steps }),
   addThinkingStep: (step) =>
     set((s) => ({ thinkingSteps: [...s.thinkingSteps, step] })),
@@ -91,4 +102,11 @@ export const useAppStore = create<AppState>((set) => ({
     set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
   clearChat: () => set({ messages: [], thinkingSteps: [] }),
   setBackendAvailable: (v) => set({ backendAvailable: v }),
+  resetForNewDataset: () =>
+    set({
+      messages: [],
+      thinkingSteps: [],
+      isLoading: false,
+      datasetId: generateSessionId(),
+    }),
 }));

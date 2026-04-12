@@ -29,6 +29,7 @@ from app.core.semantic_layer import SemanticLayer
 from app.core.cache import SemanticCache
 from app.core.vector_store import VectorStore
 from app.core.state import ConversationState
+from app.core.query_classifier import classify_query
 from app.agents import router, sql_generator, validator, answer_generator
 from app.utils.chart_generator import generate_chart, format_column_name, format_indian_number, is_currency_column
 from app.core.duckdb_engine import DuckDBEngine
@@ -114,10 +115,33 @@ def process_query(question: str) -> dict:
 
     start = time.time()
 
-    # 1. Semantic cache
-    cached = cache.find_similar(question)
+    # 0. Pre-classify query (rule-based, zero latency)
+    #    Determines query_type (COUNT/RANKING/AGGREGATION/INSIGHT/…) and the
+    #    appropriate cache threshold.  Fixes the root cause of "same answer
+    #    for all queries": a threshold of 0.90 was matching analytically-
+    #    different questions; now each type has its own stricter threshold and
+    #    the cache is type-gated so COUNT hits never collide with INSIGHT hits.
+    classification = classify_query(question)
+    query_type = classification["query_type"]
+
+    # 1. Semantic cache — type-gated, higher threshold
+    cached = cache.find_similar(
+        question,
+        threshold=classification["cache_threshold"],
+        query_type=query_type,
+    )
     if cached:
         elapsed = (time.time() - start) * 1000
+        # Bug fix: conversation state was never updated on cache hits, causing
+        # stale context to poison all subsequent queries in the session.
+        if cached.get("answer"):
+            st.session_state.conversation_state.update(
+                question,
+                cached.get("sql"),
+                cached.get("results"),
+                cached.get("answer", ""),
+                cached.get("tables_used", []),
+            )
         return {**cached, "cached": True, "time_ms": elapsed}
 
     # 2. Route
@@ -147,8 +171,10 @@ def process_query(question: str) -> dict:
         semantic_ctx = semantic_layer.generate_ddl_with_context(relevant_tables)
         verified = vector_store.find_similar_query(question, route["pattern"])
 
+        query_hints = classification.get("hints", [])
         gen_result = sql_generator.generate_sql(
-            question, route["pattern"], semantic_ctx, verified, state_ctx
+            question, route["pattern"], semantic_ctx, verified, state_ctx,
+            query_hints=query_hints,
         )
         sql_used = gen_result["sql"]
 
@@ -159,6 +185,7 @@ def process_query(question: str) -> dict:
             gen_result = sql_generator.generate_sql(
                 question, route["pattern"], semantic_ctx, verified, state_ctx,
                 error_feedback=exec_result["error"],
+                query_hints=query_hints,
             )
             sql_used = gen_result["sql"]
             exec_result = validator.validate_and_execute(sql_used, semantic_layer, DB_PATH)
@@ -172,18 +199,20 @@ def process_query(question: str) -> dict:
                 "time_ms": (time.time() - start) * 1000,
             }
 
-        # Result verification (quick sanity check)
-        verification = validator.verify_result(
-            question, sql_used, exec_result["results"], exec_result["columns"]
-        )
-        if not verification.get("is_valid", True):
-            # Retry with verification feedback
-            gen_result = sql_generator.generate_sql(
-                question, route["pattern"], semantic_ctx, verified, state_ctx,
-                error_feedback=f"Result validation issue: {verification.get('issue', '')}",
+        # Result verification — skip for simple factual queries to avoid
+        # unnecessary LLM calls and false-positive retries on COUNT results.
+        if not classification.get("is_factual", False):
+            verification = validator.verify_result(
+                question, sql_used, exec_result["results"], exec_result["columns"]
             )
-            sql_used = gen_result["sql"]
-            exec_result = validator.validate_and_execute(sql_used, semantic_layer, DB_PATH)
+            if not verification.get("is_valid", True):
+                gen_result = sql_generator.generate_sql(
+                    question, route["pattern"], semantic_ctx, verified, state_ctx,
+                    error_feedback=f"Result validation issue: {verification.get('issue', '')}",
+                    query_hints=query_hints,
+                )
+                sql_used = gen_result["sql"]
+                exec_result = validator.validate_and_execute(sql_used, semantic_layer, DB_PATH)
 
         sql_results = exec_result
 
@@ -193,7 +222,8 @@ def process_query(question: str) -> dict:
 
     # 4. Generate answer
     answer_result = answer_generator.generate_answer(
-        question, route["pattern"], sql_results, rag_docs, sql_used, state_ctx
+        question, route["pattern"], sql_results, rag_docs, sql_used, state_ctx,
+        query_type=query_type,
     )
 
     # 5. Update conversation state
@@ -218,7 +248,7 @@ def process_query(question: str) -> dict:
         "time_ms": elapsed,
     }
 
-    cache.store(question, response)
+    cache.store(question, response, query_type=query_type)
     return response
 
 
@@ -261,9 +291,25 @@ def process_upload_query(question: str) -> dict:
     auto_sem = st.session_state.auto_semantic
     state_ctx = st.session_state.conversation_state.get_context_for_followup()
 
-    # 1. Semantic cache check
-    cached = cache.find_similar(question)
+    # 0. Pre-classify query
+    classification = classify_query(question)
+    query_type = classification["query_type"]
+
+    # 1. Semantic cache check — type-gated with appropriate threshold
+    cached = cache.find_similar(
+        question,
+        threshold=classification["cache_threshold"],
+        query_type=query_type,
+    )
     if cached:
+        if cached.get("answer"):
+            st.session_state.conversation_state.update(
+                question,
+                cached.get("sql"),
+                cached.get("results"),
+                cached.get("answer", ""),
+                cached.get("tables_used", []),
+            )
         return {**cached, "cached": True, "time_ms": (time.time() - start) * 1000}
 
     # 2. Build schema summary for multi-file context
@@ -352,7 +398,8 @@ def process_upload_query(question: str) -> dict:
 
     # 8. Generate answer
     answer_result = answer_generator.generate_answer(
-        question, route["pattern"], exec_result, None, gen_result["sql"], state_ctx
+        question, route["pattern"], exec_result, None, gen_result["sql"], state_ctx,
+        query_type=query_type,
     )
 
     # 9. Update conversation state
@@ -372,7 +419,7 @@ def process_upload_query(question: str) -> dict:
         "cached": False,
         "time_ms": elapsed,
     }
-    cache.store(question, response)
+    cache.store(question, response, query_type=query_type)
     return response
 
 

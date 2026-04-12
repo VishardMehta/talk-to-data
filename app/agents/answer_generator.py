@@ -77,6 +77,7 @@ def generate_answer(
     rag_documents: list | None = None,
     sql_used: str | None = None,
     conversation_state: str | None = None,
+    query_type: str = "INSIGHT",
 ) -> dict:
     templates = _get_templates()
     pattern_cfg = templates.get(pattern, templates.get("GENERAL", {}))
@@ -102,7 +103,38 @@ def generate_answer(
     if conversation_state:
         state_section = f"\n## Conversation context\n{conversation_state}\n"
 
-    system_prompt = f"""{_ANALYST_SYSTEM}
+    # Bug fix: the _ANALYST_SYSTEM prompt always forces insight-first narrative,
+    # which produces "North dominates at ₹18.5L…" even for a simple COUNT query.
+    # Factual/aggregation queries need a direct, precise answer style.
+    _FACTUAL_SYSTEM = """You are a precise data analyst answering a direct factual question.
+
+RULES FOR FACTUAL QUERIES:
+1. Answer the question directly with the exact number or list from the data.
+2. State the fact FIRST. One sentence max for the core answer.
+3. You may add one sentence of business context ONLY if it adds real value.
+4. Format numbers for Indian readability:
+   - Counts: use commas (1,234)
+   - Currency under ₹1L: ₹45,000 | ₹1L-₹1Cr: ₹45.2L | above ₹1Cr: ₹2.3Cr
+5. NEVER produce a narrative when a number is the answer.
+6. NEVER say "Based on the data" or "According to the results".
+
+EXAMPLES:
+  Q: "How many regions are there?"
+  A: "There are 4 regions: North, South, East, and West."
+
+  Q: "Total number of orders per region?"
+  A: "North leads with 1,240 orders, followed by South (980), East (870), and West (760)."
+
+  Q: "Which region has the most accepted orders?"
+  A: "North has the highest count of completed orders at 1,240 — roughly 30% more than second-place South."
+"""
+
+    is_factual = query_type in (
+        "COUNT", "COUNT_DISTINCT", "AGGREGATION", "RANKING", "LIST"
+    )
+    base_system = _FACTUAL_SYSTEM if is_factual else _ANALYST_SYSTEM
+
+    system_prompt = f"""{base_system}
 
 ## PATTERN-SPECIFIC GUIDANCE
 {pattern_answer_prompt}
@@ -110,7 +142,7 @@ def generate_answer(
 {data_section}{rag_section}{state_section}
 Return ONLY valid JSON:
 {{
-  "answer": "<insight-first plain English answer>",
+  "answer": "<{"direct factual answer" if is_factual else "insight-first plain English answer"}>",
   "follow_up_questions": ["<specific question based on what data showed>", "<another specific question>"]
 }}
 

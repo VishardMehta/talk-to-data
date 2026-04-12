@@ -54,6 +54,10 @@ export default function Dashboard() {
     addMessage,
     isLoading,
     setLoading,
+    isUploading,
+    setUploading,
+    uploadError,
+    setUploadError,
     dataSource,
     setDataSource,
     uploadedFile,
@@ -65,6 +69,7 @@ export default function Dashboard() {
     addThinkingStep,
     updateThinkingStep,
     clearThinkingSteps,
+    resetForNewDataset,
   } = useAppStore();
 
   const [inputValue, setInputValue] = useState("");
@@ -82,18 +87,18 @@ export default function Dashboard() {
   const canSubmit =
     inputValue.trim().length > 0 &&
     !isLoading &&
+    !isUploading &&
     (activeSource === "sample" || (needsUpload && file !== null));
 
+  // Health check on mount + retry every 30s if backend not available
   useEffect(() => {
-    checkBackendHealth().then((ok) => setBackendAvailable(ok));
-  }, [setBackendAvailable]);
-
-  useEffect(() => {
-    if (!backendAvailable || !uploadedFile || dataSource === "sample") return;
-    uploadFile(uploadedFile, sessionId).then((res) => {
-      if (!res.success) console.warn("File upload failed:", res.message);
-    });
-  }, [backendAvailable, uploadedFile, sessionId, dataSource]);
+    const check = () => checkBackendHealth().then((ok) => setBackendAvailable(ok));
+    check();
+    const interval = setInterval(() => {
+      if (!backendAvailable) check();
+    }, 30_000);
+    return () => clearInterval(interval);
+  }, [setBackendAvailable, backendAvailable]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -113,11 +118,42 @@ export default function Dashboard() {
   };
 
   const handleFile = useCallback(
-    (f: File) => {
+    async (f: File) => {
+      setUploadError(null);
+
+      // 1. Reset all previous chat + dataset context
+      if (sessionId) await clearSession(sessionId);
+      resetForNewDataset();
+
+      // 2. Set the new file in local + store state
       setFile(f);
       setUploadedFile(f);
+      const ext = f.name.split(".").pop()?.toLowerCase();
+      const src: DataSource = ext === "json" ? "json"
+        : ext === "db" || ext === "sqlite" || ext === "sqlite3" ? "database"
+        : "csv";
+      setDataSource(src);
+
+      // 3. Upload immediately (gate queries until done)
+      if (backendAvailable) {
+        setUploading(true);
+        try {
+          const res = await uploadFile(f, sessionId);
+          if (!res.success) {
+            console.error("[handleFile] Upload failed:", res.message);
+            setUploadError(res.message ?? "Upload failed");
+          } else {
+            console.log(`[handleFile] Uploaded ${f.name}: ${res.rows} rows, ${res.columns} columns`);
+          }
+        } catch (err) {
+          console.error("[handleFile] Upload error:", err);
+          setUploadError("Upload failed — check backend is running");
+        } finally {
+          setUploading(false);
+        }
+      }
     },
-    [setUploadedFile]
+    [setUploadedFile, setDataSource, resetForNewDataset, sessionId, backendAvailable, setUploading, setUploadError]
   );
 
   const handleQuery = useCallback(
@@ -308,18 +344,29 @@ export default function Dashboard() {
               </motion.div>
             )}
 
-            {/* File preview */}
+            {/* File preview + upload status */}
             <AnimatePresence>
               {file && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="mb-3">
-                  <div className="flex items-center gap-3 bg-[#2f2f2f] border border-[#424242] rounded-xl px-4 py-3">
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="mb-3 space-y-2">
+                  <div className={`flex items-center gap-3 bg-[#2f2f2f] border rounded-xl px-4 py-3 ${
+                    isUploading ? "border-[#555]" : uploadError ? "border-red-500/50" : "border-[#424242]"
+                  }`}>
                     <FileText className="w-5 h-5 text-[#b4b4b4] flex-shrink-0" />
                     <span className="text-sm text-[#ececec] truncate flex-1">{file.name}</span>
-                    <span className="text-xs text-[#8e8e8e]">{(file.size / 1024).toFixed(1)} KB</span>
-                    <button onClick={() => { setFile(null); setUploadedFile(null); }} className="rounded-lg p-1.5 hover:bg-[#424242] transition-colors cursor-pointer">
-                      <X className="w-4 h-4 text-[#8e8e8e]" />
-                    </button>
+                    {isUploading ? (
+                      <span className="text-xs text-[#8e8e8e] animate-pulse">Uploading…</span>
+                    ) : (
+                      <span className="text-xs text-[#8e8e8e]">{(file.size / 1024).toFixed(1)} KB</span>
+                    )}
+                    {!isUploading && (
+                      <button onClick={() => { setFile(null); setUploadedFile(null); setUploadError(null); }} className="rounded-lg p-1.5 hover:bg-[#424242] transition-colors cursor-pointer">
+                        <X className="w-4 h-4 text-[#8e8e8e]" />
+                      </button>
+                    )}
                   </div>
+                  {uploadError && (
+                    <p className="text-xs text-red-400 px-1">{uploadError}</p>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
