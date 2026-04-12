@@ -1,4 +1,4 @@
-<img width="1367" height="176" alt="image" src="https://github.com/user-attachments/assets/7435fb99-6cdd-4dcb-abc5-0f0ac1b96206" /># 🗣️ Talk to Data — Multi-Agent AI Analytics Platform
+# 🗣️ Talk to Data — Multi-Agent AI Analytics Platform
 
 > Ask questions about your data in plain English. Get instant, accurate answers with charts, insights, and full transparency — powered by a custom multi-agent AI pipeline.
 
