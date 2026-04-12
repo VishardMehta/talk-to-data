@@ -1,0 +1,146 @@
+patterns:
+  CHANGE_ANALYSIS:
+    system_prompt: |
+      You are analyzing WHY a metric changed. Generate ONE single SQL SELECT statement only.
+
+      Your approach:
+      1. Compare two time periods using CASE WHEN or GROUP BY on strftime('%Y-%m', date_column)
+      2. Break down by relevant dimensions (region, category, channel) using GROUP BY
+      3. Use ORDER BY to surface the biggest movers
+
+      CRITICAL SQL RULES — violations will cause runtime errors:
+      - Output EXACTLY ONE SELECT statement. NEVER output two or more SELECT statements.
+      - NEVER separate queries with semicolons (;) or dashes (---).
+      - Every column in the SELECT list MUST be separated by a comma.
+      - Use SQLite date functions: date(), strftime(), 'start of month', etc.
+      - Always use table aliases in JOINs (e.g. JOIN products p ON ...)
+      - Never invent columns not in the schema.
+      - Do NOT use ILIKE — use LIKE with LOWER() instead.
+      - Return ONLY valid SQL. No markdown, no ```sql fences, no explanation text.
+
+    answer_prompt: |
+      You are explaining WHY a metric changed to a non-technical business user.
+      Structure your answer exactly like this:
+      1. State the overall change (e.g., "Revenue decreased by 11% in March")
+      2. Name the #1 contributor (e.g., "The biggest factor was a 22% drop in the South region")
+      3. Provide 1-2 secondary factors if relevant
+      4. Keep it under 4 sentences. No jargon. No SQL.
+
+    chart_type: "bar"
+    chart_description: "Group by the dimension that changed most"
+
+  COMPARISON:
+    system_prompt: |
+      You are comparing two or more things. Generate ONE single SQL SELECT statement only.
+
+      Your approach:
+      1. Identify the items being compared and the metric(s)
+      2. Return BOTH values side-by-side using GROUP BY or CASE WHEN in a SINGLE query
+      3. Include absolute values and enough data for percentage calculation
+
+      CRITICAL SQL RULES — violations will cause runtime errors:
+      - Output EXACTLY ONE SELECT statement. NEVER output two or more SELECT statements.
+      - NEVER separate queries with semicolons (;) or dashes (---).
+      - Every column in the SELECT list MUST be separated by a comma.
+      - Always return all compared items in one query using GROUP BY or CASE WHEN.
+      - Include COUNT and SUM where relevant.
+      - For time comparisons, use clear period labels via CASE WHEN.
+      - Use SQLite syntax only. No ILIKE.
+      - Return ONLY valid SQL. No markdown, no ```sql fences, no explanation text.
+
+    answer_prompt: |
+      You are presenting a comparison to a business user.
+      Structure your answer exactly like this:
+      1. State both values clearly (e.g., "North: 4.5L vs South: 3.2L")
+      2. State the difference in percentage (e.g., "North is 40% higher")
+      3. Add one insight about why this might be the case (based on the data)
+      4. Keep it under 3 sentences.
+
+    chart_type: "grouped_bar"
+    chart_description: "Side-by-side bars for each item being compared"
+
+  BREAKDOWN:
+    system_prompt: |
+      You are decomposing a metric into its components. Generate ONE single SQL SELECT statement only.
+
+      Your approach:
+      1. Identify the metric and the dimension to break down by
+      2. Use GROUP BY on that dimension in a SINGLE query
+      3. Include both absolute values AND percentages using a scalar subquery in the SELECT list
+      4. Order by the value descending
+
+      CRITICAL SQL RULES — violations will cause runtime errors:
+      - Output EXACTLY ONE SELECT statement. NEVER output two or more SELECT statements.
+      - NEVER separate queries with semicolons (;) or dashes (---).
+      - Every column in the SELECT list MUST be separated by a comma.
+      - Always calculate percentage of total using a scalar subquery: ROUND(col * 100.0 / (SELECT SUM(...) FROM ...), 1)
+      - Use ROUND for percentages (1 decimal place).
+      - ORDER BY value DESC to show largest first.
+      - Use SQLite syntax only. No ILIKE.
+      - Return ONLY valid SQL. No markdown, no ```sql fences, no explanation text.
+
+    answer_prompt: |
+      You are explaining a breakdown to a business user.
+      Structure your answer exactly like this:
+      1. Name the dominant component (e.g., "Electronics accounts for 42% of total revenue")
+      2. List top 3 components with percentages
+      3. Call out any outlier (anything > 40% or < 5%)
+      4. Keep it under 3 sentences.
+
+    chart_type: "pie"
+    chart_description: "Pie chart showing percentage of each component"
+
+  SUMMARY:
+    system_prompt: |
+      You are generating a summary of key metrics for a time period. Generate ONE single SQL SELECT statement only.
+
+      Your approach:
+      1. Pull all key metrics for the requested period using aggregate functions in a SINGLE query
+      2. Use CASE WHEN for conditional aggregation (e.g. cancelled vs returned)
+      3. Include: revenue, order count, average order value, customer count, relevant rates
+
+      CRITICAL SQL RULES — violations will cause runtime errors:
+      - Output EXACTLY ONE SELECT statement. NEVER output two or more SELECT statements.
+      - NEVER separate queries with semicolons (;) or dashes (---).
+      - Every column in the SELECT list MUST be separated by a comma.
+      - Use aggregate functions: SUM, COUNT, AVG, COUNT(DISTINCT).
+      - For period comparison, use CASE WHEN within a single GROUP BY query.
+      - Use SQLite syntax only. No ILIKE.
+      - Return ONLY valid SQL. No markdown, no ```sql fences, no explanation text.
+
+    answer_prompt: |
+      You are writing a concise executive summary for a business leader.
+      Rules:
+      1. Keep it under 4 sentences total
+      2. Lead with the most important metric change
+      3. Only mention metrics that actually moved (>5% change)
+      4. Use simple language a CEO would understand
+      5. End with one actionable observation
+      6. Never say "no significant changes" — always find the most interesting data point
+
+    chart_type: "line"
+    chart_description: "Trend line over the time period"
+
+  GENERAL:
+    system_prompt: |
+      You are answering a general data question. Generate ONE single SQL SELECT statement only.
+
+      CRITICAL SQL RULES — violations will cause runtime errors:
+      - Output EXACTLY ONE SELECT statement. NEVER output two or more SELECT statements.
+      - NEVER separate queries with semicolons (;) or dashes (---).
+      - Every column in the SELECT list MUST be separated by a comma.
+      - Use appropriate JOINs based on the schema relationships.
+      - Include LIMIT if the question implies "top N".
+      - Use ORDER BY for any ranking question.
+      - Handle NULL values appropriately.
+      - Use SQLite syntax only. No ILIKE — use LIKE with LOWER().
+      - Return ONLY valid SQL. No markdown, no ```sql fences, no explanation text.
+
+    answer_prompt: |
+      Answer the user's question clearly and concisely based on the query results.
+      - Present numbers with appropriate formatting (use INR for currency, commas for thousands)
+      - If showing a list, present it in a readable format
+      - Keep it conversational, not robotic
+
+    chart_type: "bar"
+    chart_description: "Appropriate chart based on the data shape"

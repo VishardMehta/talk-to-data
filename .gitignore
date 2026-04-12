@@ -1,0 +1,105 @@
+# ─── AI assistant / planning files ───────────────────────────────────────────
+*.md
+!README.md
+.planning/
+memory/
+AGENTS.md
+GEMINI.md
+
+# ─── Claude Code & code-review graph ─────────────────────────────────────────
+.claude/
+.code-graph-review/
+.cursor/
+
+# ─── Environment & secrets ────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ─── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+*.cover
+
+# ─── Virtual environments ─────────────────────────────────────────────────────
+venv/
+.venv/
+env/
+ENV/
+.virtualenv/
+
+# ─── Node / Frontend ──────────────────────────────────────────────────────────
+node_modules/
+frontend/dist/
+frontend/build/
+frontend/.vite/
+.npm/
+*.tsbuildinfo
+
+# ─── Uploaded user data (runtime files, not source) ──────────────────────────
+talk-to-data/data/uploads/
+talk-to-data/data/*.db
+# Keep the seed script and documents
+!talk-to-data/data/seed.py
+!talk-to-data/data/documents/
+
+# ─── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+*.log.*
+logs/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# ─── OS files ─────────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ─── IDE / editor ─────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+
+# ─── Temporary files ──────────────────────────────────────────────────────────
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+tmp/
+temp/
+
+# ─── Jupyter ──────────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb
+
+# ─── Vector store / model cache ───────────────────────────────────────────────
+*.faiss
+*.index
+sentence_transformers_cache/
+.cache/

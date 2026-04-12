@@ -1,0 +1,224 @@
+database: "data/demo.db"
+
+models:
+  orders:
+    table: "orders"
+    description: "All customer purchase orders with amounts, status, and dates"
+    columns:
+      order_id:
+        type: INTEGER
+        description: "Unique order identifier"
+      customer_id:
+        type: INTEGER
+        description: "References customers table"
+      product_id:
+        type: INTEGER
+        description: "References products table"
+      amount:
+        type: REAL
+        description: "Total order amount in INR"
+      quantity:
+        type: INTEGER
+        description: "Number of items ordered"
+      status:
+        type: TEXT
+        description: "Order status"
+        sample_values: ["completed", "pending", "cancelled", "returned"]
+      region:
+        type: TEXT
+        description: "Geographic region of the order"
+        sample_values: ["North", "South", "East", "West"]
+      channel:
+        type: TEXT
+        description: "Sales channel"
+        sample_values: ["online", "retail", "wholesale"]
+      order_date:
+        type: DATE
+        description: "Date when order was placed"
+
+  customers:
+    table: "customers"
+    description: "Customer profiles with demographics and segments"
+    columns:
+      customer_id:
+        type: INTEGER
+        description: "Unique customer identifier"
+      name:
+        type: TEXT
+        description: "Full name of the customer"
+      email:
+        type: TEXT
+        description: "Customer email address"
+      city:
+        type: TEXT
+        description: "City of the customer"
+      state:
+        type: TEXT
+        description: "State of the customer"
+      join_date:
+        type: DATE
+        description: "Date when the customer registered"
+      segment:
+        type: TEXT
+        description: "Customer segment"
+        sample_values: ["regular", "premium", "enterprise"]
+
+  products:
+    table: "products"
+    description: "Product catalog with categories and pricing"
+    columns:
+      product_id:
+        type: INTEGER
+        description: "Unique product identifier"
+      name:
+        type: TEXT
+        description: "Product name"
+      category:
+        type: TEXT
+        description: "Product category"
+        sample_values: ["Electronics", "Clothing", "Home", "Food", "Beauty"]
+      subcategory:
+        type: TEXT
+        description: "Product subcategory"
+      price:
+        type: REAL
+        description: "Selling price in INR"
+      cost:
+        type: REAL
+        description: "Cost price in INR, used for margin calculations"
+
+  complaints:
+    table: "complaints"
+    description: "Customer complaints with free-text descriptions and categories"
+    columns:
+      complaint_id:
+        type: INTEGER
+        description: "Unique complaint identifier"
+      customer_id:
+        type: INTEGER
+        description: "References customers table"
+      order_id:
+        type: INTEGER
+        description: "References orders table"
+      complaint_text:
+        type: TEXT
+        description: "Free-text description of the complaint"
+      category:
+        type: TEXT
+        description: "Complaint category"
+        sample_values: ["delivery", "quality", "pricing", "service", "refund"]
+      severity:
+        type: TEXT
+        description: "Complaint severity level"
+        sample_values: ["low", "medium", "high", "critical"]
+      created_date:
+        type: DATE
+        description: "Date when complaint was filed"
+      resolved:
+        type: BOOLEAN
+        description: "Whether the complaint has been resolved"
+
+relationships:
+  orders_customers:
+    from_table: orders
+    from_column: customer_id
+    to_table: customers
+    to_column: customer_id
+    type: many_to_one
+    join_sql: "orders.customer_id = customers.customer_id"
+    description: "Each order belongs to one customer"
+
+  orders_products:
+    from_table: orders
+    from_column: product_id
+    to_table: products
+    to_column: product_id
+    type: many_to_one
+    join_sql: "orders.product_id = products.product_id"
+    description: "Each order is for one product"
+
+  complaints_orders:
+    from_table: complaints
+    from_column: order_id
+    to_table: orders
+    to_column: order_id
+    type: many_to_one
+    join_sql: "complaints.order_id = orders.order_id"
+    description: "Each complaint is about one order"
+
+  complaints_customers:
+    from_table: complaints
+    from_column: customer_id
+    to_table: customers
+    to_column: customer_id
+    type: many_to_one
+    join_sql: "complaints.customer_id = customers.customer_id"
+    description: "Each complaint is filed by one customer"
+
+metrics:
+  total_revenue:
+    sql: "SUM(orders.amount)"
+    description: "Total revenue from all orders"
+    aliases: ["revenue", "sales", "total sales", "income"]
+    tables: ["orders"]
+
+  order_count:
+    sql: "COUNT(orders.order_id)"
+    description: "Total number of orders"
+    aliases: ["number of orders", "total orders", "orders count"]
+    tables: ["orders"]
+
+  average_order_value:
+    sql: "AVG(orders.amount)"
+    description: "Average order amount"
+    aliases: ["AOV", "average order", "avg order value"]
+    tables: ["orders"]
+
+  gross_margin:
+    sql: "SUM(orders.amount - products.cost * orders.quantity) / SUM(orders.amount) * 100"
+    description: "Gross margin percentage"
+    aliases: ["margin", "profit margin", "gross profit"]
+    tables: ["orders", "products"]
+
+  complaint_rate:
+    sql: "CAST(COUNT(DISTINCT complaints.complaint_id) AS REAL) / COUNT(DISTINCT orders.order_id) * 100"
+    description: "Percentage of orders that received complaints"
+    aliases: ["complaint percentage", "issues rate"]
+    tables: ["complaints", "orders"]
+
+  customer_count:
+    sql: "COUNT(DISTINCT customers.customer_id)"
+    description: "Number of unique customers"
+    aliases: ["total customers", "unique customers"]
+    tables: ["customers"]
+
+filters:
+  completed_orders:
+    sql: "orders.status = 'completed'"
+    description: "Only completed orders"
+    aliases: ["successful orders", "fulfilled orders"]
+
+  high_value:
+    sql: "orders.amount > 10000"
+    description: "Orders above 10,000"
+    aliases: ["big orders", "large orders", "premium orders", "high value"]
+
+  north_region:
+    sql: "orders.region = 'North'"
+    description: "North region only"
+    aliases: ["north", "northern region"]
+
+  south_region:
+    sql: "orders.region = 'South'"
+    description: "South region only"
+    aliases: ["south", "southern region"]
+
+  recent:
+    sql: "orders.order_date >= date('now', '-30 days')"
+    description: "Last 30 days"
+    aliases: ["recent", "this month", "last 30 days"]
+
+  last_quarter:
+    sql: "orders.order_date >= date('now', '-3 months')"
+    description: "Last 3 months"
+    aliases: ["last quarter", "this quarter", "Q1"]
