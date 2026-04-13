@@ -8,25 +8,26 @@ from app.core.groq_client import call_llm
 from app.utils.sql_parser import clean_sql
 
 
-_DUCKDB_SYSTEM = """You are a SQL expert generating DuckDB SQL queries for data stored in CSV/Parquet files.
+_DUCKDB_SYSTEM = """You are a SQL expert generating DuckDB SQL queries for data stored in files.
 
 CRITICAL DuckDB RULES:
 1. ALWAYS query using the exact read function shown in the schema (e.g. read_csv_auto('/path/file.csv'))
-   NEVER use bare table names.
+   NEVER use bare table names — EXCEPT for JSON tables which are registered with a quoted table name like "tablename".
 2. DuckDB supports ILIKE for case-insensitive string matching.
 3. DuckDB date functions:
    - current_date (not CURDATE or NOW())
    - date_part('year', col), date_part('month', col)
    - date_trunc('month', col) for truncating
-   - strftime(col, '%Y-%m') for formatting
+   - strftime(col, '%Y-%m') for formatting  [NOTE: col first, then format — NOT strftime('%Y-%m', col)]
    - col + INTERVAL '1 month'
 4. Column names with spaces or special chars MUST be double-quoted: "Column Name"
 5. DuckDB supports GROUP BY ALL, SELECT * EXCLUDE (col)
 6. Aggregate functions: SUM, AVG, COUNT, MIN, MAX, MEDIAN, MODE
 7. Window functions: ROW_NUMBER(), RANK(), LAG(), LEAD()
 8. For % of total: SUM(col) * 100.0 / SUM(SUM(col)) OVER ()
-9. NEVER use SQLite-specific syntax (date(), strftime with SQLite format, etc.)
+9. NEVER use SQLite-specific syntax (date(), strftime with SQLite format order, etc.)
 10. Return EXACTLY ONE SELECT statement. No semicolons. No markdown.
+11. TRY_CAST(col AS TYPE) is safer than CAST for potentially dirty data.
 
 {enriched_context}
 

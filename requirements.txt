@@ -9,3 +9,9 @@ duckdb>=0.10.0
 fastapi>=0.111.0
 uvicorn[standard]>=0.29.0
 python-multipart>=0.0.9
+# Universal data format support (Part 2 of UNIVERSAL_DATA_ENGINE.md)
+pandas>=2.0.0
+openpyxl>=3.1.0
+tabula-py>=2.9.0
+pdfplumber>=0.10.0
+python-docx>=1.1.0

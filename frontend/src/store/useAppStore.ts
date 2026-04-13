@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { ThinkingStep, QueryResult } from "@/types";
 
-export type DataSource = "csv" | "database" | "sample" | "json" | null;
+export type DataSource = "csv" | "database" | "json" | null;
 
 export interface Message {
   id: string;
@@ -38,6 +38,8 @@ interface AppState {
   isLoading: boolean;
   isUploading: boolean;
   uploadError: string | null;
+  uploadInfo: { rows: number; columns: number } | null;
+  suggestedQuestions: string[];
   thinkingSteps: ThinkingStep[];
   sidebarCollapsed: boolean;
   backendAvailable: boolean;
@@ -49,6 +51,8 @@ interface AppState {
   setLoading: (v: boolean) => void;
   setUploading: (v: boolean) => void;
   setUploadError: (msg: string | null) => void;
+  setUploadInfo: (info: { rows: number; columns: number } | null) => void;
+  setSuggestedQuestions: (qs: string[]) => void;
   setThinkingSteps: (steps: ThinkingStep[]) => void;
   addThinkingStep: (step: ThinkingStep) => void;
   updateThinkingStep: (id: string, patch: Partial<ThinkingStep>) => void;
@@ -57,6 +61,7 @@ interface AppState {
   clearChat: () => void;
   setBackendAvailable: (v: boolean) => void;
   resetForNewDataset: () => void;
+  resetSession: () => void;
 }
 
 function generateSessionId() {
@@ -73,6 +78,8 @@ export const useAppStore = create<AppState>((set) => ({
   isLoading: false,
   isUploading: false,
   uploadError: null,
+  uploadInfo: null,
+  suggestedQuestions: [],
   thinkingSteps: [],
   sidebarCollapsed: false,
   backendAvailable: false,
@@ -88,6 +95,8 @@ export const useAppStore = create<AppState>((set) => ({
   setLoading: (v) => set({ isLoading: v }),
   setUploading: (v) => set({ isUploading: v }),
   setUploadError: (msg) => set({ uploadError: msg }),
+  setUploadInfo: (info) => set({ uploadInfo: info }),
+  setSuggestedQuestions: (qs) => set({ suggestedQuestions: qs }),
   setThinkingSteps: (steps) => set({ thinkingSteps: steps }),
   addThinkingStep: (step) =>
     set((s) => ({ thinkingSteps: [...s.thinkingSteps, step] })),
@@ -107,6 +116,22 @@ export const useAppStore = create<AppState>((set) => ({
       messages: [],
       thinkingSteps: [],
       isLoading: false,
+      datasetId: generateSessionId(),
+    }),
+  resetSession: () =>
+    set({
+      // Full reset — all state cleared, new session generated
+      messages: [],
+      thinkingSteps: [],
+      isLoading: false,
+      isUploading: false,
+      uploadError: null,
+      uploadInfo: null,
+      suggestedQuestions: [],
+      dataSource: null,
+      uploadedFile: null,
+      uploadedFileName: null,
+      sessionId: generateSessionId(),
       datasetId: generateSessionId(),
     }),
 }));

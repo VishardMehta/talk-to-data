@@ -18,12 +18,12 @@ class Session:
         self.duckdb_engine = DuckDBEngine()
         self.auto_semantic = AutoSemantic(self.duckdb_engine)
         self.profiled_files: dict = {}   # filepath -> profile dict
-        self.app_mode: str = "demo"      # "demo" | "upload"
+        self.app_mode: str = "upload"
 
     def clear(self):
         self.conversation_state.clear()
         self.profiled_files = {}
-        self.app_mode = "demo"
+        self.app_mode = "upload"
         self.duckdb_engine = DuckDBEngine()
         self.auto_semantic = AutoSemantic(self.duckdb_engine)
 

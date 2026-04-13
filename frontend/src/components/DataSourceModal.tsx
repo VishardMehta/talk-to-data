@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Upload,
   Database,
-  BarChart3,
   CheckCircle2,
   FileText,
   X,
@@ -47,17 +46,6 @@ const OPTIONS = [
     iconBg: "bg-amber-100",
     iconColor: "text-amber-600",
   },
-  {
-    id: "sample" as DataSource,
-    icon: BarChart3,
-    title: "Sample Dataset",
-    description: "Explore with pre-loaded e-commerce data",
-    color: "from-emerald-500 to-teal-500",
-    bg: "bg-emerald-50 hover:bg-emerald-100/80",
-    border: "border-emerald-200 hover:border-emerald-400",
-    iconBg: "bg-emerald-100",
-    iconColor: "text-emerald-600",
-  },
 ];
 
 const ACCEPT: Record<string, string> = {
@@ -95,8 +83,7 @@ export default function DataSourceModal() {
     [handleFile]
   );
 
-  const canContinue =
-    selected === "sample" || (needsUpload && file !== null);
+  const canContinue = needsUpload && file !== null;
 
   const handleContinue = () => {
     if (!canContinue) return;
@@ -119,7 +106,7 @@ export default function DataSourceModal() {
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 bg-indigo-50 text-indigo-700 text-xs font-semibold px-3 py-1.5 rounded-full mb-4 tracking-wide uppercase">
               <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
-              DataLens AI
+              Talk-To-Data AI
             </div>
             <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
               Choose your data source

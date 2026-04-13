@@ -170,3 +170,43 @@ body {
   border-color: #8e8e8e !important;
   background: rgba(142, 142, 142, 0.04) !important;
 }
+
+/* ── Bug 8: Global spacing & aesthetic improvements ── */
+
+/* Chart container */
+.recharts-wrapper {
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+/* Metric / stat cards */
+[data-stat-card] {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+/* Source text below chart/answer */
+.source-text {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 4px;
+}
+
+/* Follow-up suggestions section */
+.follow-up-section {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Smooth hover for all interactive buttons */
+button {
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+/* Table rows subtle stripe */
+.data-table tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}

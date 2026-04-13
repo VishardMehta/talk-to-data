@@ -11,6 +11,8 @@ Key improvements:
 """
 
 import yaml
+import json
+import re
 from pathlib import Path
 from app.core.groq_client import call_llm
 
@@ -40,6 +42,44 @@ def _format_results(results: list, columns: list) -> str:
     sep = "-" * len(header)
     rows = [" | ".join(str(v) for v in row) for row in results[:50]]
     return "\n".join([header, sep] + rows)
+
+
+def _parse_answer_payload(raw: str | dict) -> dict:
+    """Parse model output into the expected answer payload safely."""
+    if isinstance(raw, dict):
+        return raw
+
+    text = (raw or "").strip()
+    if not text:
+        return {"answer": "I was unable to generate an answer.", "follow_up_questions": []}
+
+    cleaned = text
+    if cleaned.startswith("```json"):
+        cleaned = cleaned[7:]
+    if cleaned.startswith("```"):
+        cleaned = cleaned[3:]
+    if cleaned.endswith("```"):
+        cleaned = cleaned[:-3]
+    cleaned = cleaned.strip()
+
+    try:
+        payload = json.loads(cleaned)
+        if isinstance(payload, dict):
+            return payload
+    except Exception:
+        pass
+
+    match = re.search(r"\{[\s\S]*\}", cleaned)
+    if match:
+        try:
+            payload = json.loads(match.group(0))
+            if isinstance(payload, dict):
+                return payload
+        except Exception:
+            pass
+
+    # Final fallback: treat model output as plain answer text.
+    return {"answer": cleaned, "follow_up_questions": []}
 
 
 # The core insight-first answer prompt
@@ -78,6 +118,7 @@ def generate_answer(
     sql_used: str | None = None,
     conversation_state: str | None = None,
     query_type: str = "INSIGHT",
+    dataset_context: str | None = None,  # Bug 9: table name / dataset info for upload mode
 ) -> dict:
     templates = _get_templates()
     pattern_cfg = templates.get(pattern, templates.get("GENERAL", {}))
@@ -134,7 +175,25 @@ EXAMPLES:
     )
     base_system = _FACTUAL_SYSTEM if is_factual else _ANALYST_SYSTEM
 
-    system_prompt = f"""{base_system}
+    # Bug 9 fix: when dataset_context is provided (upload mode), override the
+    # system prompt to forbid hardcoded e-commerce domain language
+    upload_domain_rules = ""
+    if dataset_context:
+        upload_domain_rules = f"""
+
+## DATASET CONTEXT
+{dataset_context}
+
+## CRITICAL DOMAIN RULES (upload mode)
+You are analysing the ACTUAL dataset described above — NOT e-commerce data.
+FORBIDDEN unless those exact words appear in the column names or result values:
+  - Do NOT use: "revenue", "₹", "lakhs", "crores", "orders", "customers", "sales",
+    "trending upward", "order volume"
+Use ONLY the column names and values that appear in the SQL results.
+If the question asks "who" or "which", state the exact name/value from the results first.
+"""
+
+    system_prompt = f"""{base_system}{upload_domain_rules}
 
 ## PATTERN-SPECIFIC GUIDANCE
 {pattern_answer_prompt}
@@ -153,13 +212,17 @@ Do NOT include chart_suggestion — charts are handled separately.
     if sql_used:
         user_message += f"\nSQL used: {sql_used[:300]}"
 
-    result = call_llm(
-        model_key="smart_answer",  # Llama 3.3 70B for best natural language
-        system_prompt=system_prompt,
-        user_message=user_message,
-        temperature=0.3,
-        json_mode=True,
-    )
+    try:
+        raw = call_llm(
+            model_key="smart_answer",  # Llama 3.3 70B for best natural language
+            system_prompt=system_prompt,
+            user_message=user_message,
+            temperature=0.3,
+            json_mode=False,
+        )
+        result = _parse_answer_payload(raw)
+    except Exception:
+        result = {"answer": "I was unable to generate an answer.", "follow_up_questions": []}
 
     result.setdefault("answer", "I was unable to generate an answer.")
     result.setdefault("follow_up_questions", [])

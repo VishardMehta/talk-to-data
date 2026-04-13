@@ -2,8 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAppStore } from "@/store/useAppStore";
 import type { DataSource } from "@/store/useAppStore";
-import { getMockResult } from "@/lib/mockData";
-import { generateId, sleep } from "@/lib/utils";
+import { generateId } from "@/lib/utils";
 import {
   checkBackendHealth,
   uploadFile,
@@ -17,36 +16,12 @@ import FileUpload from "@/components/ui/file-upload";
 import { ShiningText } from "@/components/ui/shining-text";
 import {
   Sparkles,
-  Upload,
-  Database,
-  BarChart3,
-  FileJson,
   ArrowUp,
   X,
   FileText,
   Plus,
 } from "lucide-react";
 import type { ThinkingStep, QueryResult } from "@/types";
-
-/* ─── Data source options ─── */
-const SOURCE_OPTIONS: {
-  id: DataSource;
-  icon: React.ElementType;
-  label: string;
-  accept?: string;
-}[] = [
-  { id: "csv", icon: Upload, label: "CSV", accept: ".csv" },
-  { id: "database", icon: Database, label: "Database", accept: ".db,.sqlite,.sqlite3" },
-  { id: "json", icon: FileJson, label: "JSON", accept: ".json" },
-  { id: "sample", icon: BarChart3, label: "Sample Data" },
-];
-
-const SUGGESTIONS = [
-  "What is total revenue?",
-  "Top 3 cities by orders",
-  "Revenue by region",
-  "Category breakdown",
-];
 
 export default function Dashboard() {
   const {
@@ -58,6 +33,7 @@ export default function Dashboard() {
     setUploading,
     uploadError,
     setUploadError,
+    uploadInfo,
     dataSource,
     setDataSource,
     uploadedFile,
@@ -70,25 +46,27 @@ export default function Dashboard() {
     updateThinkingStep,
     clearThinkingSteps,
     resetForNewDataset,
+    setUploadInfo,
+    suggestedQuestions,
+    setSuggestedQuestions,
   } = useAppStore();
 
   const [inputValue, setInputValue] = useState("");
-  const [selectedSource, setSelectedSource] = useState<DataSource>("sample");
+  const [selectedSource, setSelectedSource] = useState<DataSource>("csv");
   const [file, setFile] = useState<File | null>(null);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<(() => void) | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
   const isEmpty = messages.length === 0;
-  const activeSource = dataSource ?? selectedSource ?? "sample";
+  const activeSource = dataSource ?? selectedSource ?? "csv";
   const needsUpload = activeSource === "csv" || activeSource === "database" || activeSource === "json";
+  const uploadReady = !!file && !!uploadInfo && !uploadError;
   const canSubmit =
     inputValue.trim().length > 0 &&
     !isLoading &&
     !isUploading &&
-    (activeSource === "sample" || (needsUpload && file !== null));
+    uploadReady;
 
   // Health check on mount + retry every 30s if backend not available
   useEffect(() => {
@@ -111,15 +89,10 @@ export default function Dashboard() {
     ta.style.height = `${Math.min(ta.scrollHeight, 200)}px`;
   }, [inputValue]);
 
-  const handleSelectSource = (src: DataSource) => {
-    setSelectedSource(src);
-    setFile(null);
-    if (src === "sample") setDataSource("sample");
-  };
-
   const handleFile = useCallback(
     async (f: File) => {
       setUploadError(null);
+      setSuggestedQuestions([]);  // clear old suggestions immediately
 
       // 1. Reset all previous chat + dataset context
       if (sessionId) await clearSession(sessionId);
@@ -144,6 +117,14 @@ export default function Dashboard() {
             setUploadError(res.message ?? "Upload failed");
           } else {
             console.log(`[handleFile] Uploaded ${f.name}: ${res.rows} rows, ${res.columns} columns`);
+            // Store upload metadata
+            if (res.rows !== undefined && res.columns !== undefined) {
+              setUploadInfo({ rows: res.rows, columns: res.columns });
+            }
+            // Store dynamic suggested questions from backend
+            if (res.suggested_questions && res.suggested_questions.length > 0) {
+              setSuggestedQuestions(res.suggested_questions);
+            }
           }
         } catch (err) {
           console.error("[handleFile] Upload error:", err);
@@ -153,13 +134,13 @@ export default function Dashboard() {
         }
       }
     },
-    [setUploadedFile, setDataSource, resetForNewDataset, sessionId, backendAvailable, setUploading, setUploadError]
+    [setUploadedFile, setDataSource, resetForNewDataset, sessionId, backendAvailable, setUploading, setUploadError, setUploadInfo, setSuggestedQuestions]
   );
 
   const handleQuery = useCallback(
     async (question: string, sourceFallback?: DataSource) => {
       if (isLoading) return;
-      const resolvedSource = sourceFallback ?? dataSource ?? selectedSource ?? "sample";
+      const resolvedSource = sourceFallback ?? dataSource ?? selectedSource ?? "csv";
       if (!dataSource) setDataSource(resolvedSource);
       clearThinkingSteps();
 
@@ -171,7 +152,7 @@ export default function Dashboard() {
 
       if (backendAvailable) {
         const localSteps: ThinkingStep[] = [];
-        const abort = streamQuery(question, sessionId, resolvedSource ?? "sample", {
+        const abort = streamQuery(question, sessionId, resolvedSource ?? "csv", {
           onThinkingStep: (step) => { localSteps.push(step); addThinkingStep(step); },
           onThinkingUpdate: (id, patch) => {
             const s = localSteps.find((s) => s.id === id);
@@ -199,33 +180,14 @@ export default function Dashboard() {
         });
         abortRef.current = abort;
       } else {
-        const stepIds = { routing: generateId(), sql: generateId(), executing: generateId(), answering: generateId() };
-        addThinkingStep({ id: stepIds.routing, type: "routing", message: "Understanding your question", status: "active", timestamp: Date.now() });
-        await sleep(600);
-        updateThinkingStep(stepIds.routing, { status: "done" });
-        addThinkingStep({ id: stepIds.sql, type: "sql", message: "Identifying relevant data", status: "active", timestamp: Date.now() });
-        await sleep(700);
-        updateThinkingStep(stepIds.sql, { status: "done" });
-        addThinkingStep({ id: stepIds.executing, type: "executing", message: "Performing calculations", status: "active", timestamp: Date.now() });
-        await sleep(500 + Math.random() * 300);
-        updateThinkingStep(stepIds.executing, { status: "done" });
-        addThinkingStep({ id: stepIds.answering, type: "answering", message: "Drawing conclusions", status: "active", timestamp: Date.now() });
-        await sleep(500);
-        updateThinkingStep(stepIds.answering, { status: "done" });
-
-        const result: QueryResult = { ...getMockResult(question), question };
-        addMessage({
-          id: assistantMsgId, role: "assistant", content: result.answer,
-          timestamp: new Date(), queryResult: result,
-          thinkingSteps: [
-            { id: stepIds.routing, type: "routing", message: "Understanding your question", status: "done", timestamp: Date.now() },
-            { id: stepIds.sql, type: "sql", message: "Identifying relevant data", status: "done", timestamp: Date.now() },
-            { id: stepIds.executing, type: "executing", message: "Performing calculations", status: "done", timestamp: Date.now() },
-            { id: stepIds.answering, type: "answering", message: "Drawing conclusions", status: "done", timestamp: Date.now() },
-          ],
-        });
-        clearThinkingSteps();
         setLoading(false);
+        clearThinkingSteps();
+        addMessage({
+          id: assistantMsgId,
+          role: "assistant",
+          content: "Backend is unavailable. Start the API server and try again. Uploaded datasets are only answered from the live backend.",
+          timestamp: new Date(),
+        });
       }
     },
     [isLoading, addMessage, setLoading, backendAvailable, sessionId, dataSource, selectedSource, setDataSource, addThinkingStep, updateThinkingStep, clearThinkingSteps]
@@ -244,8 +206,8 @@ export default function Dashboard() {
   };
 
   const handleSuggestion = (q: string) => {
-    const source = activeSource ?? "sample";
-    if (!activeSource) { setSelectedSource("sample"); setDataSource("sample"); }
+    const source = activeSource ?? "csv";
+    if (!activeSource) { setSelectedSource("csv"); setDataSource("csv"); }
     handleQuery(q, source);
   };
 
@@ -327,16 +289,16 @@ export default function Dashboard() {
               </p>
             </motion.div>
 
-            {/* Suggestion chips — above input on landing */}
-            {activeSource && (
+            {/* Suggestion chips — from uploaded dataset profile */}
+            {uploadedFile && suggestedQuestions.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1, duration: 0.3 }}
                 className="flex flex-wrap gap-2.5 mb-4 justify-center"
               >
-                {SUGGESTIONS.map((s) => (
-                  <button key={s} onClick={() => handleSuggestion(s)}
+                {suggestedQuestions.map((s, i) => (
+                  <button key={i} onClick={() => handleSuggestion(s)}
                     className="px-4 py-2.5 bg-[#2f2f2f] hover:bg-[#3a3a3a] border border-[#424242] hover:border-[#555] rounded-lg text-[14px] text-[#b4b4b4] hover:text-white transition-all duration-150 cursor-pointer">
                     {s}
                   </button>
@@ -444,22 +406,22 @@ export default function Dashboard() {
         </div>
 
         {/* ── Bottom input area — CENTERED ── */}
-        <div className="flex-shrink-0 w-full flex justify-center px-6 pb-5 pt-2">
+        <div className="shrink-0 w-full flex justify-center px-6 pb-6 pt-4">
           <div className="w-full max-w-[680px]">
             {/* Follow-up suggestion chips */}
             {!isLoading && followUps && followUps.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mb-3"
+                className="mb-4"
               >
-                <p className="text-[11px] font-medium text-[#6b6b6b] uppercase tracking-wider mb-2 text-center">
+                <p className="text-[11px] font-medium text-[#6b6b6b] uppercase tracking-wider mb-3 text-center">
                   Suggested next questions
                 </p>
-                <div className="flex flex-wrap gap-2 justify-center">
+                <div className="flex flex-wrap gap-2.5 justify-center">
                   {followUps.map((q) => (
                     <button key={q} onClick={() => handleQuery(q)}
-                      className="px-4 py-2 bg-[#2f2f2f] hover:bg-[#3a3a3a] border border-[#424242] hover:border-[#555] rounded-xl text-[13px] text-[#b4b4b4] hover:text-white transition-all duration-150 cursor-pointer">
+                      className="px-4 py-2.5 bg-[#2f2f2f] hover:bg-[#3a3a3a] border border-[#424242] hover:border-[#555] rounded-xl text-[13px] leading-relaxed text-[#b4b4b4] hover:text-white transition-all duration-150 cursor-pointer">
                       {q}
                     </button>
                   ))}

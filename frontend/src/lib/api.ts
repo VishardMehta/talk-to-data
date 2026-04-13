@@ -1,7 +1,4 @@
-/**
- * API client for the FastAPI backend.
- * Falls back to mock data when backend is unavailable.
- */
+/** API client for the upload-only FastAPI backend. */
 
 import type { ThinkingStep, QueryResult } from "@/types";
 
@@ -19,7 +16,7 @@ export async function checkBackendHealth(): Promise<boolean> {
 export async function uploadFile(
   file: File,
   sessionId: string
-): Promise<{ success: boolean; message: string; filename?: string }> {
+): Promise<{ success: boolean; message: string; filename?: string; rows?: number; columns?: number; suggested_questions?: string[] }> {
   const form = new FormData();
   form.append("file", file);
   form.append("session_id", sessionId);

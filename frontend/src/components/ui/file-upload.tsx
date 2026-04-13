@@ -245,27 +245,6 @@ export default function FileUpload({ onFileSelected, onClose }: FileUploadProps)
           </AnimatePresence>
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[#2a2a2a]">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg text-sm text-[#8e8e8e] hover:text-white hover:bg-[#2f2f2f] transition-colors cursor-pointer"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onClose}
-            disabled={files.length === 0 || files.some((f) => f.progress < 100)}
-            className={clsx(
-              "px-5 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer",
-              files.length > 0 && files.every((f) => f.progress >= 100)
-                ? "bg-white text-[#212121] hover:bg-gray-200"
-                : "bg-[#333] text-[#6b6b6b] cursor-not-allowed"
-            )}
-          >
-            Done
-          </button>
-        </div>
       </motion.div>
     </motion.div>
   );

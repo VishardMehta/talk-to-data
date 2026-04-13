@@ -1,9 +1,10 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Clock, RotateCcw, Database, Upload, Layers, FileJson, Plus,
+  Clock, RotateCcw, Database, Upload, FileJson, Plus,
   PanelLeftClose, PanelLeft,
 } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
+import { clearSession } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 interface SidebarProps {
@@ -14,11 +15,18 @@ const sourceLabel: Record<string, { icon: React.ElementType; label: string }> = 
   csv: { icon: Upload, label: 'CSV File' },
   database: { icon: Database, label: 'Database' },
   json: { icon: FileJson, label: 'JSON File' },
-  sample: { icon: Layers, label: 'Sample Dataset' },
 }
 
 export default function Sidebar({ onSuggestion }: SidebarProps) {
-  const { sidebarCollapsed, toggleSidebar, messages, clearChat, dataSource } = useAppStore()
+  const {
+    sidebarCollapsed, toggleSidebar, messages,
+    dataSource, sessionId, resetSession,
+  } = useAppStore()
+
+  const handleNewChat = async () => {
+    if (sessionId) await clearSession(sessionId)
+    resetSession()
+  }
 
   const historyItems = messages
     .filter((m: { role: string }) => m.role === 'user')
@@ -62,8 +70,8 @@ export default function Sidebar({ onSuggestion }: SidebarProps) {
                 exit={{ opacity: 0, x: -8 }}
                 transition={{ duration: 0.2 }}
               >
-                <p className="font-semibold text-[15px] text-[#ececec] tracking-tight">DataLens</p>
-                <p className="text-xs text-[#8e8e8e]">AI Analytics</p>
+                <p className="font-semibold text-[15px] text-[#ececec] tracking-tight">Talk-To-Data</p>
+                <p className="text-xs text-[#8e8e8e]">Seamless Self-Service Intelligence</p>
               </motion.div>
             )}
           </AnimatePresence>
@@ -79,7 +87,7 @@ export default function Sidebar({ onSuggestion }: SidebarProps) {
               className="px-3 pb-2"
             >
               <button
-                onClick={clearChat}
+                onClick={handleNewChat}
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-[#b4b4b4] hover:bg-[#2f2f2f] hover:text-white transition-colors cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
@@ -146,7 +154,7 @@ export default function Sidebar({ onSuggestion }: SidebarProps) {
         {/* Bottom */}
         <div className="border-t border-[#2a2a2a] p-3">
           <button
-            onClick={clearChat}
+            onClick={handleNewChat}
             className={cn(
               'flex items-center gap-3 w-full px-4 py-3 rounded-lg text-sm text-[#8e8e8e] hover:bg-[#2f2f2f] hover:text-red-400 transition-colors duration-150 cursor-pointer',
               sidebarCollapsed && 'justify-center'
