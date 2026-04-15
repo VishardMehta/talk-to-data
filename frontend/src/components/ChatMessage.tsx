@@ -32,11 +32,11 @@ export default function ChatMessage({ message, onFollowUp }: ChatMessageProps) {
         transition={{ duration: 0.25 }}
         className="flex justify-end"
       >
-        <div className="flex items-end gap-3 max-w-lg">
-          <div className="bg-[#2f2f2f] text-[#ececec] px-5 py-3 rounded-2xl rounded-br-md text-[15px] leading-relaxed border border-[#424242]">
+        <div className="flex items-end gap-3.5 max-w-[88%]">
+          <div className="bg-[#2f2f2f] text-[#ececec] px-5 py-3.5 rounded-2xl rounded-br-md text-[15px] leading-[1.7] border border-[#424242]">
             {message.content}
           </div>
-          <div className="w-8 h-8 rounded-full bg-[#2f2f2f] flex items-center justify-center flex-shrink-0 mb-0.5 border border-[#424242]">
+          <div className="w-8 h-8 rounded-full bg-[#2f2f2f] flex items-center justify-center shrink-0 mb-0.5 border border-[#424242]">
             <User className="w-4 h-4 text-[#b4b4b4]" />
           </div>
         </div>
@@ -52,7 +52,7 @@ export default function ChatMessage({ message, onFollowUp }: ChatMessageProps) {
       className="flex gap-4 group"
     >
       {/* Avatar */}
-      <div className="w-8 h-8 rounded-full bg-[#2f2f2f] flex items-center justify-center flex-shrink-0 mt-0.5 border border-[#424242]">
+      <div className="w-8 h-8 rounded-full bg-[#2f2f2f] flex items-center justify-center shrink-0 mt-0.5 border border-[#424242]">
         <Sparkles className="w-4 h-4 text-[#b4b4b4]" />
       </div>
 

@@ -61,7 +61,7 @@ export default function AnswerCard({ result }: AnswerCardProps) {
 
       {/* ─── Visualization ─── */}
       {hasChart && (
-        <div className="bg-[#2a2a2a] border border-[#3a3a3a] rounded-xl p-5 overflow-hidden">
+        <div className="bg-[#2a2a2a] border border-[#3a3a3a] rounded-2xl p-6 overflow-x-auto">
           <ChartRenderer
             chartType={result.chart_type!}
             data={result.data!}
@@ -75,7 +75,7 @@ export default function AnswerCard({ result }: AnswerCardProps) {
 
       {/* ─── Data Table ─── */}
       {hasTable && (
-        <div className="bg-[#2a2a2a] border border-[#3a3a3a] rounded-xl p-4 overflow-x-auto">
+        <div className="bg-[#2a2a2a] border border-[#3a3a3a] rounded-2xl p-5 overflow-x-auto">
           <ChartRenderer chartType="table" data={result.data || []} columns={result.columns} rows={result.rows} />
         </div>
       )}

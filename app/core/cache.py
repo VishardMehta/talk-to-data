@@ -29,6 +29,7 @@ class SemanticCache:
     def __init__(self, model: SentenceTransformer = None):
         self._model = model
         self._entries: list[dict] = []
+        self._enabled = True
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -36,11 +37,21 @@ class SemanticCache:
 
     def _get_model(self) -> SentenceTransformer:
         if self._model is None:
-            self._model = SentenceTransformer("all-MiniLM-L6-v2")
+            try:
+                print("[cache] Loading sentence transformer model…")
+                self._model = SentenceTransformer("all-MiniLM-L6-v2")
+            except Exception as e:
+                # Fail open: app keeps running without semantic cache.
+                self._enabled = False
+                print(f"[cache] Disabled semantic cache: failed to load embedding model ({e})")
+                return None
         return self._model
 
     def _embed(self, text: str) -> np.ndarray:
-        vec = self._get_model().encode([text], normalize_embeddings=True)[0]
+        model = self._get_model()
+        if (not self._enabled) or model is None:
+            return None
+        vec = model.encode([text], normalize_embeddings=True)[0]
         return vec.astype(np.float32)
 
     def _cosine(self, a: np.ndarray, b: np.ndarray) -> float:
@@ -72,10 +83,14 @@ class SemanticCache:
                        comparison" cache entry.
         """
         self._prune_expired()
+        if not self._enabled:
+            return None
         if not self._entries:
             return None
 
         q_vec = self._embed(question)
+        if q_vec is None:
+            return None
         best_score = -1.0
         best_entry = None
 
@@ -109,7 +124,11 @@ class SemanticCache:
         Now the entire pipeline response is preserved.
         """
         self._prune_expired()
+        if not self._enabled:
+            return
         vec = self._embed(question)
+        if vec is None:
+            return
 
         entry = {
             **result,                       # everything the pipeline produced

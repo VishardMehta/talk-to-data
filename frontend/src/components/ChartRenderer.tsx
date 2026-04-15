@@ -51,9 +51,6 @@ export default function ChartRenderer({
         <StatCard
           label={xKey || Object.keys(data[0])[0]}
           value={String(data[0][yKey] ?? data[0][valueKey] ?? Object.values(data[0])[0])}
-          change="+12.4%"
-          trend="up"
-          subtitle="vs. previous quarter"
         />
       )}
 

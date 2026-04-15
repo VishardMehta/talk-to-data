@@ -1,29 +1,32 @@
 """
-Auto-generate semantic context for uploaded files.
-Profile once on upload, cache in session state.
+Auto-generate semantic context for uploaded data.
+
+Works with DuckDB in-memory tables (not file paths).
+Profile once per table on upload, cache in session state.
 """
+from __future__ import annotations
 
 import json
-from pathlib import Path
-from app.core.groq_client import call_llm
+from typing import Dict, List, Any
 
+import duckdb
+
+from app.core.llm_client import call_llm
+
+
+# ── LLM response normalizers ──────────────────────────────────────────────────
 
 def _normalize_llm_response(result: dict) -> dict:
     """
-    Normalize LLM response to handle cases where the model returns
-    'columns' as a list instead of a dict.
-
-    Expected: {"columns": {"col1": {"description": "..."}, ...}}
-    Actual sometimes: {"columns": [{"name": "col1", "description": "..."}, ...]}
+    LLM sometimes returns 'columns' as a list instead of a dict.
+    Expected: {"columns": {"col1": {...}, ...}}
+    Fix both forms.
     """
     columns = result.get("columns", {})
-
     if isinstance(columns, list):
-        print(f"[auto_semantic] WARNING: LLM returned columns as list, converting to dict. Raw: {json.dumps(columns[:2])}")
         col_dict = {}
         for item in columns:
             if isinstance(item, dict):
-                # Try common key names for the column name
                 name = (
                     item.get("name")
                     or item.get("column_name")
@@ -31,16 +34,14 @@ def _normalize_llm_response(result: dict) -> dict:
                     or item.get("col")
                 )
                 if name:
-                    col_dict[name] = {k: v for k, v in item.items() if k not in ("name", "column_name", "column", "col")}
+                    col_dict[name] = {k: v for k, v in item.items()
+                                      if k not in ("name", "column_name", "column", "col")}
         result["columns"] = col_dict
     elif not isinstance(columns, dict):
-        print(f"[auto_semantic] WARNING: LLM returned columns as unexpected type {type(columns)}, defaulting to empty dict.")
         result["columns"] = {}
 
-    # Normalize column_aliases — should be a dict, sometimes comes as list or None
     aliases = result.get("column_aliases", {})
     if isinstance(aliases, list):
-        print(f"[auto_semantic] WARNING: column_aliases is a list, converting.")
         alias_dict = {}
         for item in aliases:
             if isinstance(item, dict):
@@ -55,13 +56,101 @@ def _normalize_llm_response(result: dict) -> dict:
     return result
 
 
-def _format_columns_with_stats(columns: dict) -> str:
+# ── Deep profiling (DuckDB SQL, no LLM) ──────────────────────────────────────
+
+def profile_table(con: duckdb.DuckDBPyConnection, table_name: str) -> dict:
+    """Deep-profile a DuckDB table. Returns schema_profile dict."""
+    try:
+        schema_rows = con.execute(f'DESCRIBE "{table_name}"').fetchall()
+    except Exception as e:
+        raise ValueError(f"Cannot describe table {table_name!r}: {e}") from e
+
+    total_rows = con.execute(f'SELECT COUNT(*) FROM "{table_name}"').fetchone()[0]
+
+    try:
+        sample_df = con.execute(f'SELECT * FROM "{table_name}" LIMIT 5').fetchdf()
+        sample_data = sample_df.to_dict(orient="records")
+    except Exception:
+        sample_data = []
+
+    columns: Dict[str, Any] = {}
+    for row in schema_rows:
+        col_name = row[0]
+        col_type = row[1].upper()
+        col_info: Dict[str, Any] = {"type": col_type}
+
+        try:
+            null_count = con.execute(
+                f'SELECT COUNT(*) - COUNT("{col_name}") FROM "{table_name}"'
+            ).fetchone()[0]
+            col_info["null_count"] = null_count
+
+            base_type = col_type.split("(")[0].strip()
+
+            if base_type in ("VARCHAR", "TEXT", "STRING", "CHAR"):
+                distinct = con.execute(
+                    f'SELECT COUNT(DISTINCT "{col_name}") FROM "{table_name}"'
+                ).fetchone()[0]
+                col_info["distinct_count"] = distinct
+
+                if distinct <= 100:
+                    samples = con.execute(
+                        f'SELECT DISTINCT "{col_name}" FROM "{table_name}" '
+                        f'WHERE "{col_name}" IS NOT NULL '
+                        f'ORDER BY "{col_name}" LIMIT 50'
+                    ).fetchall()
+                    col_info["sample_values"] = [str(r[0]) for r in samples]
+                else:
+                    samples = con.execute(
+                        f'SELECT DISTINCT "{col_name}" FROM "{table_name}" '
+                        f'WHERE "{col_name}" IS NOT NULL LIMIT 10'
+                    ).fetchall()
+                    col_info["sample_values"] = [str(r[0]) for r in samples]
+
+            elif base_type in (
+                "INTEGER", "BIGINT", "HUGEINT", "SMALLINT",
+                "DOUBLE", "FLOAT", "DECIMAL", "NUMERIC", "REAL",
+            ):
+                result = con.execute(
+                    f'SELECT MIN("{col_name}"), MAX("{col_name}"), '
+                    f'ROUND(AVG(CAST("{col_name}" AS DOUBLE)), 2), '
+                    f'COUNT(DISTINCT "{col_name}") FROM "{table_name}"'
+                ).fetchone()
+                col_info["min"] = result[0]
+                col_info["max"] = result[1]
+                col_info["avg"] = result[2]
+                col_info["distinct_count"] = result[3]
+
+            elif base_type in ("DATE", "TIMESTAMP", "TIMESTAMPTZ"):
+                result = con.execute(
+                    f'SELECT MIN("{col_name}"), MAX("{col_name}"), '
+                    f'COUNT(DISTINCT "{col_name}") FROM "{table_name}"'
+                ).fetchone()
+                col_info["min_date"] = str(result[0])
+                col_info["max_date"] = str(result[1])
+                col_info["distinct_count"] = result[2]
+
+        except Exception:
+            pass  # skip profiling errors gracefully
+
+        columns[col_name] = col_info
+
+    return {
+        "table_name": table_name,
+        "total_rows": total_rows,
+        "columns": columns,
+        "sample_data": sample_data,
+    }
+
+
+# ── LLM enrichment (Agent 0 — Schema Analyst) ────────────────────────────────
+
+def _format_columns_for_llm(columns: dict) -> str:
     lines = []
     for col_name, info in columns.items():
         line = f"  {col_name} ({info['type']})"
         if "sample_values" in info:
-            vals = info["sample_values"][:10]
-            line += f"\n    Sample values: {vals}"
+            line += f"\n    Sample values: {info['sample_values'][:10]}"
             line += f"\n    Distinct count: {info.get('distinct_count', '?')}"
         if "min" in info:
             line += f"\n    Range: {info['min']} to {info['max']}, Avg: {info['avg']}"
@@ -73,54 +162,10 @@ def _format_columns_with_stats(columns: dict) -> str:
     return "\n".join(lines)
 
 
-def _build_fallback_semantic(schema_profile: dict) -> dict:
-    """Rule-based fallback when LLM enrichment fails. Infers metric/dimension from type."""
-    columns = {}
-    numeric_types = {"INTEGER", "BIGINT", "HUGEINT", "SMALLINT", "DOUBLE",
-                     "FLOAT", "DECIMAL", "NUMERIC", "REAL"}
-    date_types = {"DATE", "TIMESTAMP", "TIMESTAMPTZ"}
-
-    for col_name, col_info in schema_profile["columns"].items():
-        base_type = col_info["type"].split("(")[0].strip().upper()
-        is_metric = base_type in numeric_types
-        is_date = base_type in date_types
-        is_dimension = not is_metric and not is_date
-        columns[col_name] = {
-            "description": col_name.replace("_", " ").title(),
-            "is_metric": is_metric,
-            "is_dimension": is_dimension,
-            "is_date": is_date,
-        }
-
-    return {
-        "table_description": f"Dataset with {schema_profile['total_rows']} rows",
-        "columns": columns,
-        "suggested_metrics": [],
-        "suggested_questions": [],
-        "column_aliases": {},
-    }
-
-
-def _build_basic_context(schema_profile: dict) -> str:
-    """Minimal enriched context when full context builder fails."""
-    read_fn = schema_profile["read_fn"]
-    lines = [
-        f"-- Source: {read_fn}",
-        f"-- Total rows: {schema_profile['total_rows']}",
-        f"-- Query using: SELECT ... FROM {read_fn}",
-        "-- Schema:",
-    ]
-    for col_name, col_info in schema_profile["columns"].items():
-        lines.append(f'-- "{col_name}" ({col_info["type"]})')
-    return "\n".join(lines)
-
-
-def _generate_auto_semantic(schema_profile: dict) -> dict:
-    """One LLM call to enrich schema with descriptions, metrics, aliases."""
-    col_stats = _format_columns_with_stats(schema_profile["columns"])
+def _generate_semantic_enrichment(schema_profile: dict) -> dict:
+    """One LLM call → semantic metadata for the SQL generator."""
+    col_stats = _format_columns_for_llm(schema_profile["columns"])
     sample_str = str(schema_profile["sample_data"][:5])
-
-    # List column names explicitly so the LLM uses exact keys
     col_names_list = list(schema_profile["columns"].keys())
 
     prompt = f"""You are a data analyst examining a new dataset.
@@ -136,130 +181,179 @@ Sample data (first 5 rows):
 
 Return a JSON object with EXACTLY these keys:
 1. "table_description": one sentence describing what this data is about
-2. "columns": a JSON OBJECT (NOT an array/list) where each KEY is a column name and the VALUE is an object with:
+2. "columns": a JSON OBJECT (NOT an array) where each KEY is a column name and the VALUE has:
    - "description": what this column likely represents
-   - "is_metric": true if measurable numeric value (revenue, count, amount, price, quantity, score, runs, wickets)
-   - "is_dimension": true if categorical/groupable (region, category, name, status, type, team, player)
+   - "is_metric": true if measurable numeric value (score, count, amount, runs, wickets, price, qty)
+   - "is_dimension": true if categorical/groupable (region, team, player, category, status, name)
    - "is_date": true if date/time field
-   IMPORTANT: "columns" MUST be a JSON object like {{"col_name": {{...}}, "col_name2": {{...}}}}
-   NOT a list/array like [{{"name": "col_name", ...}}]
-   Use EXACTLY these column names as keys: {col_names_list}
-3. "suggested_metrics": list of useful aggregation strings (e.g., "SUM(amount) as total_revenue")
+   IMPORTANT: Use EXACTLY these column names as keys: {col_names_list}
+   "columns" MUST be a JSON object, NOT a list.
+3. "suggested_metrics": list of useful aggregation strings (e.g. "SUM(\\"amount\\") as total_amount")
 4. "suggested_questions": list of 5 example questions a user might ask about this data
 5. "column_aliases": a JSON OBJECT mapping common user terms to actual column names
-   e.g., {{"revenue": "amount", "sales": "amount"}}
-   MUST be a JSON object, NOT a list.
 
 Be precise. Only mark is_metric=true for numeric columns. Only mark is_date=true for date/timestamp columns."""
 
     result = call_llm(
-        model_key="smart",
-        system_prompt="You are a data analyst. Respond with valid JSON only. The 'columns' field MUST be a JSON object with column names as keys, never a list.",
+        model_key="schema_analyst",
+        system_prompt=(
+            "You are a data analyst. Respond with valid JSON only. "
+            "The 'columns' field MUST be a JSON object with column names as keys."
+        ),
         user_message=prompt,
         temperature=0.0,
         json_mode=True,
     )
 
-    print(f"[auto_semantic] Raw LLM response type check — columns type: {type(result.get('columns'))}")
-    if isinstance(result.get("columns"), list):
-        print(f"[auto_semantic] columns (first item): {json.dumps(result['columns'][0]) if result['columns'] else '[]'}")
-    elif isinstance(result.get("columns"), dict):
-        first_key = next(iter(result["columns"]), None)
-        print(f"[auto_semantic] columns (first key): {first_key}")
-
     result = _normalize_llm_response(result)
     return result
 
 
-def _generate_auto_verified_queries(filepath: str, schema_profile: dict, auto_semantic: dict) -> list:
-    """Generate basic verified queries for any dataset."""
-    read_fn = schema_profile["read_fn"]
-    queries = []
+def _build_fallback_semantic(schema_profile: dict) -> dict:
+    """Rule-based fallback when LLM fails."""
+    numeric_types = {
+        "INTEGER", "BIGINT", "HUGEINT", "SMALLINT",
+        "DOUBLE", "FLOAT", "DECIMAL", "NUMERIC", "REAL",
+    }
+    date_types = {"DATE", "TIMESTAMP", "TIMESTAMPTZ"}
 
-    # 1. Row count
-    queries.append({
-        "question": "How many rows are in the dataset?",
-        "sql": f"SELECT COUNT(*) as total_rows FROM {read_fn}",
-    })
+    columns = {}
+    for col_name, col_info in schema_profile["columns"].items():
+        base_type = col_info["type"].split("(")[0].strip().upper()
+        columns[col_name] = {
+            "description": col_name.replace("_", " ").title(),
+            "is_metric": base_type in numeric_types,
+            "is_dimension": base_type not in numeric_types and base_type not in date_types,
+            "is_date": base_type in date_types,
+        }
 
+    return {
+        "table_description": f"Dataset with {schema_profile['total_rows']} rows",
+        "columns": columns,
+        "suggested_metrics": [],
+        "suggested_questions": [],
+        "column_aliases": {},
+    }
+
+
+# ── Verified queries ──────────────────────────────────────────────────────────
+
+def generate_verified_queries(
+    con: duckdb.DuckDBPyConnection,
+    schema_profile: dict,
+    auto_semantic: dict,
+) -> List[dict]:
+    """Generate 4–6 representative SQL queries and test them against DuckDB."""
+    table_name = schema_profile["table_name"]
+    cols = schema_profile["columns"]
     sem_cols = auto_semantic.get("columns", {})
     if not isinstance(sem_cols, dict):
-        print(f"[auto_semantic] _generate_auto_verified_queries: sem_cols is {type(sem_cols)}, forcing empty dict")
         sem_cols = {}
 
-    # 2. SUM of first metric
-    for col_name, col_info in sem_cols.items():
-        if col_info.get("is_metric") and col_name in schema_profile["columns"]:
-            desc = col_info.get("description", col_name)
+    metrics = [c for c, i in sem_cols.items()
+               if i.get("is_metric") and c in cols]
+    dimensions = [c for c, i in sem_cols.items()
+                  if i.get("is_dimension") and c in cols]
+    dates = [c for c, i in sem_cols.items()
+             if i.get("is_date") and c in cols]
+
+    queries = []
+
+    def _try(sql: str) -> bool:
+        try:
+            rows = con.execute(sql).fetchall()
+            return len(rows) > 0
+        except Exception:
+            return False
+
+    # Row count
+    sql = f'SELECT COUNT(*) as total_records FROM "{table_name}"'
+    if _try(sql):
+        queries.append({"question": f"How many records are in {table_name}?",
+                         "pattern": "SUMMARY", "sql": sql})
+
+    # Summary of metrics
+    if metrics:
+        aggs = ", ".join(
+            [f'COUNT(*) as total_rows']
+            + [f'SUM("{m}") as total_{m}' for m in metrics[:3]]
+        )
+        sql = f'SELECT {aggs} FROM "{table_name}"'
+        if _try(sql):
+            queries.append({"question": f"Give me a summary of {table_name}",
+                             "pattern": "SUMMARY", "sql": sql})
+
+    # Top 10 rows
+    sql = f'SELECT * FROM "{table_name}" LIMIT 10'
+    if _try(sql):
+        queries.append({"question": f"Show me the first 10 rows of {table_name}",
+                         "pattern": "GENERAL", "sql": sql})
+
+    # Breakdown by first dimension
+    if dimensions and metrics:
+        dim, metric = dimensions[0], metrics[0]
+        sql = (
+            f'SELECT "{dim}", COUNT(*) as count, SUM("{metric}") as total_{metric} '
+            f'FROM "{table_name}" '
+            f'GROUP BY "{dim}" ORDER BY count DESC LIMIT 15'
+        )
+        if _try(sql):
             queries.append({
-                "question": f"What is the total {desc}?",
-                "sql": f'SELECT SUM("{col_name}") as total FROM {read_fn}',
+                "question": f"Breakdown of {table_name} by {dim}",
+                "pattern": "BREAKDOWN", "sql": sql,
             })
-            break
 
-    # 3. GROUP BY first dimension + first metric
-    metric_col = next(
-        (c for c, i in sem_cols.items() if i.get("is_metric") and c in schema_profile["columns"]),
-        None,
-    )
-    for col_name, col_info in sem_cols.items():
-        if col_info.get("is_dimension") and col_name in schema_profile["columns"]:
-            if metric_col:
-                queries.append({
-                    "question": f"Breakdown by {col_name}",
-                    "sql": (
-                        f'SELECT "{col_name}", SUM("{metric_col}") as total '
-                        f"FROM {read_fn} "
-                        f'GROUP BY "{col_name}" ORDER BY total DESC'
-                    ),
-                })
-            break
-
-    # 4. Date trend
-    for col_name, col_info in sem_cols.items():
-        if col_info.get("is_date") and col_name in schema_profile["columns"]:
-            agg = f'SUM("{metric_col}")' if metric_col else "COUNT(*)"
+    # Top-N by metric
+    if dimensions and metrics:
+        dim, metric = dimensions[0], metrics[0]
+        sql = (
+            f'SELECT "{dim}", SUM("{metric}") as total '
+            f'FROM "{table_name}" '
+            f'GROUP BY "{dim}" ORDER BY total DESC LIMIT 10'
+        )
+        if _try(sql):
             queries.append({
-                "question": "Trend over time",
-                "sql": (
-                    f"SELECT date_trunc('month', \"{col_name}\") as month, "
-                    f"{agg} as total FROM {read_fn} "
-                    f'GROUP BY month ORDER BY month'
-                ),
+                "question": f"Top 10 {dim} by {metric}",
+                "pattern": "BREAKDOWN", "sql": sql,
             })
-            break
 
-    # 5. Top 10
-    queries.append({
-        "question": "Show top 10 rows",
-        "sql": f"SELECT * FROM {read_fn} LIMIT 10",
-    })
+    # Trend over time
+    if dates and metrics:
+        date_col, metric = dates[0], metrics[0]
+        sql = (
+            f"SELECT date_trunc('month', \"{date_col}\") as month, "
+            f'SUM("{metric}") as total_{metric}, COUNT(*) as count '
+            f'FROM "{table_name}" '
+            f'GROUP BY month ORDER BY month'
+        )
+        if _try(sql):
+            queries.append({
+                "question": f"Monthly trend of {metric} in {table_name}",
+                "pattern": "CHANGE_ANALYSIS", "sql": sql,
+            })
 
     return queries
 
 
-def _build_enriched_context(schema_profile: dict, auto_semantic: dict) -> str:
-    """Build the context string for SQL generator prompt."""
-    read_fn = schema_profile["read_fn"]
+# ── Enriched context string ───────────────────────────────────────────────────
+
+def build_enriched_context(schema_profile: dict, auto_semantic: dict) -> str:
+    """Build the SQL-generator context string using the TABLE NAME (not file path)."""
+    table_name = schema_profile["table_name"]
     table_desc = auto_semantic.get("table_description", "")
     sem_cols = auto_semantic.get("columns", {})
-
-    # Safety: ensure sem_cols is a dict (normalizer should have fixed this, but double-check)
     if not isinstance(sem_cols, dict):
-        print(f"[auto_semantic] _build_enriched_context: sem_cols is {type(sem_cols)}, forcing empty dict")
         sem_cols = {}
 
     context = (
         f"-- Dataset: {table_desc}\n"
-        f"-- Source: {read_fn}\n"
+        f'-- Table name: "{table_name}"\n'
         f"-- Total rows: {schema_profile['total_rows']}\n"
-        f"-- Query using: SELECT ... FROM {read_fn}\n\n"
+        f'-- Query using: SELECT ... FROM "{table_name}"\n\n'
         "-- Schema:\n"
     )
 
-    metrics = []
-    dimensions = []
-    dates = []
+    metrics, dimensions, dates = [], [], []
 
     for col_name, col_info in schema_profile["columns"].items():
         sem = sem_cols.get(col_name, {})
@@ -267,14 +361,13 @@ def _build_enriched_context(schema_profile: dict, auto_semantic: dict) -> str:
         line = f'-- "{col_name}" ({col_info["type"]}): {desc}'
 
         if "sample_values" in col_info:
-            vals = col_info["sample_values"][:10]
-            line += f"\n--   Values: {vals}"
+            line += f'\n--   Values: {col_info["sample_values"][:10]}'
         if "min" in col_info:
-            line += f"\n--   Range: {col_info['min']} to {col_info['max']}, Avg: {col_info['avg']}"
+            line += f'\n--   Range: {col_info["min"]} to {col_info["max"]}, Avg: {col_info["avg"]}'
         if "min_date" in col_info:
-            line += f"\n--   Date range: {col_info['min_date']} to {col_info['max_date']}"
+            line += f'\n--   Date range: {col_info["min_date"]} to {col_info["max_date"]}'
         if col_info.get("null_count", 0) > 0:
-            line += f"\n--   Contains {col_info['null_count']} NULL values"
+            line += f'\n--   Contains {col_info["null_count"]} NULL values'
 
         context += line + "\n"
 
@@ -290,7 +383,7 @@ def _build_enriched_context(schema_profile: dict, auto_semantic: dict) -> str:
     if dimensions:
         context += f"-- DIMENSION columns (GROUP BY / WHERE): {', '.join(dimensions)}\n"
     if dates:
-        context += f"-- DATE columns (time filters): {', '.join(dates)}\n"
+        context += f"-- DATE columns (time filters/trends): {', '.join(dates)}\n"
 
     if auto_semantic.get("suggested_metrics"):
         context += "\n-- Useful metrics:\n"
@@ -298,87 +391,86 @@ def _build_enriched_context(schema_profile: dict, auto_semantic: dict) -> str:
             context += f"--   {m}\n"
 
     if auto_semantic.get("column_aliases"):
-        context += "\n-- Column aliases:\n"
+        context += "\n-- Column aliases (user term → column name):\n"
         for alias, actual in auto_semantic["column_aliases"].items():
             context += f'--   "{alias}" means column "{actual}"\n'
 
     return context
 
 
-def _detect_relationships(file_profiles: dict) -> list:
-    """Find common column names across files (potential join keys)."""
-    relationships = []
-    files = list(file_profiles.keys())
-    for i, f1 in enumerate(files):
-        for f2 in files[i + 1:]:
-            cols1 = set(file_profiles[f1]["columns"].keys())
-            cols2 = set(file_profiles[f2]["columns"].keys())
-            common = cols1 & cols2
-            for col in common:
-                relationships.append({
-                    "from_file": f1,
-                    "to_file": f2,
-                    "column": col,
-                    "join_hint": (
-                        f'"{file_profiles[f1]["read_fn"]}" t1 '
-                        f'JOIN "{file_profiles[f2]["read_fn"]}" t2 '
-                        f'ON t1."{col}" = t2."{col}"'
-                    ),
-                })
-    return relationships
-
+# ── Main class ────────────────────────────────────────────────────────────────
 
 class AutoSemantic:
-    def __init__(self, duckdb_engine):
-        self.engine = duckdb_engine
-        self._cache = {}  # filepath -> enriched profile
+    """Profile and enrich DuckDB tables with semantic metadata."""
 
-    def profile_and_enrich(self, filepath: str) -> dict:
-        """Full pipeline: profile + LLM enrich + verified queries + context string."""
-        if filepath in self._cache:
-            return self._cache[filepath]
+    def __init__(self, con: duckdb.DuckDBPyConnection):
+        self.con = con
+        self._cache: Dict[str, dict] = {}  # table_name -> enriched profile
 
-        # Step 1: DuckDB profiling — MUST succeed or we can't do anything
-        print(f"[auto_semantic] Step 1: profiling {filepath}")
-        schema_profile = self.engine.register_file(filepath)
-        print(f"[auto_semantic] Step 1 done: {schema_profile['total_rows']} rows, "
-              f"{len(schema_profile['columns'])} columns: {list(schema_profile['columns'].keys())}")
+    def profile_and_enrich(
+        self,
+        table_name: str,
+        skip_llm_enrichment: bool = False,
+        defer_suggested_questions: bool = False,
+    ) -> dict:
+        """Full pipeline: profile → enrich → verified queries → context string.
 
-        # Step 2: LLM semantic enrichment — graceful fallback if fails
-        print(f"[auto_semantic] Step 2: LLM enrichment")
-        try:
-            auto_semantic = _generate_auto_semantic(schema_profile)
-            cols_type = type(auto_semantic.get("columns"))
-            print(f"[auto_semantic] Step 2 done: columns type={cols_type}, "
-                  f"keys={list(auto_semantic.get('columns', {}).keys())[:5]}")
-        except Exception as e:
-            print(f"[auto_semantic] Step 2 FAILED (using fallback): {e}")
-            # Build minimal auto_semantic from schema profile without LLM
+        Fast upload mode can skip LLM enrichment and/or defer suggestion generation.
+        """
+        if table_name in self._cache:
+            return self._cache[table_name]
+
+        print(f"[auto_semantic] Profiling table: {table_name!r}")
+        schema_profile = profile_table(self.con, table_name)
+        print(
+            f"[auto_semantic] {schema_profile['total_rows']} rows, "
+            f"{len(schema_profile['columns'])} columns"
+        )
+
+        if skip_llm_enrichment:
+            print("[auto_semantic] Fast mode: skipping LLM enrichment (fallback only)")
             auto_semantic = _build_fallback_semantic(schema_profile)
-            print(f"[auto_semantic] Step 2 fallback applied")
+        else:
+            print("[auto_semantic] LLM enrichment…")
+            try:
+                auto_semantic = _generate_semantic_enrichment(schema_profile)
+            except Exception as e:
+                print(f"[auto_semantic] LLM failed ({e}), using fallback")
+                auto_semantic = _build_fallback_semantic(schema_profile)
 
-        # Step 3: Auto verified queries — graceful fallback if fails
-        print(f"[auto_semantic] Step 3: generating verified queries")
+        print("[auto_semantic] Generating verified queries…")
         try:
-            verified_queries = _generate_auto_verified_queries(filepath, schema_profile, auto_semantic)
+            verified_queries = generate_verified_queries(
+                self.con, schema_profile, auto_semantic
+            )
         except Exception as e:
-            print(f"[auto_semantic] Step 3 FAILED (using empty list): {e}")
+            print(f"[auto_semantic] verified queries failed ({e})")
             verified_queries = []
 
-        # Step 4: Build enriched context — graceful fallback if fails
-        print(f"[auto_semantic] Step 4: building enriched context")
+        print("[auto_semantic] Building enriched context…")
         try:
-            enriched_context = _build_enriched_context(schema_profile, auto_semantic)
+            enriched_context = build_enriched_context(schema_profile, auto_semantic)
         except Exception as e:
-            print(f"[auto_semantic] Step 4 FAILED (using basic context): {e}")
-            enriched_context = _build_basic_context(schema_profile)
+            print(f"[auto_semantic] context build failed ({e})")
+            enriched_context = (
+                f'-- Table: "{table_name}"\n'
+                f"-- Total rows: {schema_profile['total_rows']}\n"
+            )
 
         col_names = ", ".join(list(schema_profile["columns"].keys())[:10])
         schema_summary = (
-            f"File: {Path(filepath).name}, "
+            f"Table: {table_name}, "
             f"{schema_profile['total_rows']} rows, "
             f"columns: {col_names}"
         )
+
+        # Build suggested questions from auto_semantic + verified queries,
+        # unless deferred to keep upload latency low.
+        suggested_qs = []
+        if not defer_suggested_questions:
+            suggested_qs = auto_semantic.get("suggested_questions", [])
+            if not suggested_qs:
+                suggested_qs = [vq["question"] for vq in verified_queries[:5]]
 
         result = {
             "schema_profile": schema_profile,
@@ -386,20 +478,32 @@ class AutoSemantic:
             "verified_queries": verified_queries,
             "enriched_context": enriched_context,
             "schema_summary": schema_summary,
+            "suggested_questions": suggested_qs[:5],
+            # Legacy key used by server.py
+            "table_name": table_name,
         }
-        self._cache[filepath] = result
-        print(f"[auto_semantic] profile_and_enrich complete for {Path(filepath).name}")
+        self._cache[table_name] = result
+        print(f"[auto_semantic] Done: {table_name!r}")
         return result
 
-    def get_schema_summary(self, filepath: str) -> str:
-        return self.profile_and_enrich(filepath)["schema_summary"]
+    def profile_all(self, table_names: List[str]) -> Dict[str, dict]:
+        """Profile multiple tables. Returns {table_name: profile}."""
+        return {t: self.profile_and_enrich(t) for t in table_names}
 
-    def get_enriched_context(self, filepath: str) -> str:
-        return self.profile_and_enrich(filepath)["enriched_context"]
+    def get_combined_context(self, table_names: List[str]) -> str:
+        """Combined enriched context for all tables (for multi-file queries)."""
+        parts = []
+        for t in table_names:
+            profile = self.profile_and_enrich(t)
+            parts.append(profile["enriched_context"])
+        return "\n\n".join(parts)
 
-    def get_verified_queries(self, filepath: str) -> list:
-        return self.profile_and_enrich(filepath)["verified_queries"]
+    def get_combined_schema_summary(self, table_names: List[str]) -> str:
+        parts = []
+        for t in table_names:
+            profile = self.profile_and_enrich(t)
+            parts.append(profile["schema_summary"])
+        return "; ".join(parts)
 
-    def get_relationships(self, filepaths: list) -> list:
-        profiles = {fp: self.engine.files[fp] for fp in filepaths if fp in self.engine.files}
-        return _detect_relationships(profiles)
+    def clear(self):
+        self._cache.clear()

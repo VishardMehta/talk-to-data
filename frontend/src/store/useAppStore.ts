@@ -3,6 +3,13 @@ import type { ThinkingStep, QueryResult } from "@/types";
 
 export type DataSource = "csv" | "database" | "json" | null;
 
+export interface UploadedFileInfo {
+  file: File;
+  tableName: string;
+  rows: number;
+  columns: number;
+}
+
 export interface Message {
   id: string;
   role: "user" | "assistant";
@@ -12,12 +19,10 @@ export interface Message {
   thinkingSteps?: ThinkingStep[];
 }
 
-// Re-export for backward compat
 export type { ThinkingStep, QueryResult };
 export type { MetricCard } from "@/types";
 export type { ChartType } from "@/types";
 
-// Legacy ChartData type for any remaining usages
 export interface ChartData {
   type: "line" | "bar" | "pie";
   title: string;
@@ -30,8 +35,11 @@ export interface ChartData {
 
 interface AppState {
   dataSource: DataSource;
+  /** Legacy single-file compat */
   uploadedFile: File | null;
   uploadedFileName: string | null;
+  /** Multi-file: all uploaded files with their table info */
+  uploadedFiles: UploadedFileInfo[];
   sessionId: string;
   datasetId: string;
   messages: Message[];
@@ -46,6 +54,12 @@ interface AppState {
 
   setDataSource: (source: DataSource) => void;
   setUploadedFile: (file: File | null) => void;
+  setUploadedFiles: (
+    files:
+      | UploadedFileInfo[]
+      | ((prev: UploadedFileInfo[]) => UploadedFileInfo[])
+  ) => void;
+  addUploadedFile: (info: UploadedFileInfo) => void;
   addMessage: (msg: Message) => void;
   updateMessage: (id: string, patch: Partial<Message>) => void;
   setLoading: (v: boolean) => void;
@@ -72,6 +86,7 @@ export const useAppStore = create<AppState>((set) => ({
   dataSource: null,
   uploadedFile: null,
   uploadedFileName: null,
+  uploadedFiles: [],
   sessionId: generateSessionId(),
   datasetId: generateSessionId(),
   messages: [],
@@ -87,6 +102,15 @@ export const useAppStore = create<AppState>((set) => ({
   setDataSource: (source) => set({ dataSource: source }),
   setUploadedFile: (file) =>
     set({ uploadedFile: file, uploadedFileName: file?.name ?? null }),
+  setUploadedFiles: (files) =>
+    set((s) => ({
+      uploadedFiles:
+        typeof files === "function"
+          ? files(s.uploadedFiles)
+          : files,
+    })),
+  addUploadedFile: (info) =>
+    set((s) => ({ uploadedFiles: [...s.uploadedFiles, info] })),
   addMessage: (msg) => set((s) => ({ messages: [...s.messages, msg] })),
   updateMessage: (id, patch) =>
     set((s) => ({
@@ -107,20 +131,11 @@ export const useAppStore = create<AppState>((set) => ({
       ),
     })),
   clearThinkingSteps: () => set({ thinkingSteps: [] }),
-  toggleSidebar: () =>
-    set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+  toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
   clearChat: () => set({ messages: [], thinkingSteps: [] }),
   setBackendAvailable: (v) => set({ backendAvailable: v }),
   resetForNewDataset: () =>
     set({
-      messages: [],
-      thinkingSteps: [],
-      isLoading: false,
-      datasetId: generateSessionId(),
-    }),
-  resetSession: () =>
-    set({
-      // Full reset — all state cleared, new session generated
       messages: [],
       thinkingSteps: [],
       isLoading: false,
@@ -131,6 +146,22 @@ export const useAppStore = create<AppState>((set) => ({
       dataSource: null,
       uploadedFile: null,
       uploadedFileName: null,
+      uploadedFiles: [],
+      datasetId: generateSessionId(),
+    }),
+  resetSession: () =>
+    set({
+      messages: [],
+      thinkingSteps: [],
+      isLoading: false,
+      isUploading: false,
+      uploadError: null,
+      uploadInfo: null,
+      suggestedQuestions: [],
+      dataSource: null,
+      uploadedFile: null,
+      uploadedFileName: null,
+      uploadedFiles: [],
       sessionId: generateSessionId(),
       datasetId: generateSessionId(),
     }),
