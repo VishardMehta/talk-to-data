@@ -3,15 +3,19 @@
 import type { ThinkingStep, QueryResult } from "@/types";
 
 const ENV_API_BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.trim();
-const DEFAULT_API_BASE = "http://127.0.0.1:8000/api";
+
+// In local dev the Vite proxy forwards /api/* to http://127.0.0.1:8000.
+// A relative "/api" base means the browser stays on the same origin and
+// never needs CORS headers — the proxy handles it transparently.
+// Direct addresses are kept as fallbacks for production or non-proxied setups.
+const DEFAULT_API_BASE = "/api";
 const API_BASE_CANDIDATES = Array.from(
   new Set(
     [
       ENV_API_BASE,
-      DEFAULT_API_BASE,
+      DEFAULT_API_BASE,           // relative — goes through Vite proxy in dev
+      "http://127.0.0.1:8000/api",// direct backend for production / no-proxy
       "http://localhost:8000/api",
-      "http://127.0.0.1:8001/api",
-      "http://localhost:8001/api",
     ].filter(Boolean)
   )
 ) as string[];

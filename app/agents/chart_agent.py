@@ -1,8 +1,20 @@
 """
 Agent 5 — Chart Selector.
 
-Chooses the best visualization payload for frontend rendering.
-Falls back safely if model output is invalid.
+What this agent does:
+  After the SQL results are ready, this agent decides the best visualization
+  for the frontend.  It receives the question, the analytical pattern, and
+  a preview of the result rows, then returns a chart spec.
+
+Chart types supported:
+  stat_card  — single KPI (1 row, 1-2 numeric columns)
+  line       — time-series trend (date x-axis + numeric y-axis)
+  bar        — category comparison (categorical x + numeric y)
+  pie        — composition breakdown (≤6 categories)
+  table      — fallback for complex or ambiguous result shapes
+
+The frontend (ChartRenderer.tsx) reads the returned x_key / y_key /
+name_key / value_key to map result columns onto chart axes.
 """
 from __future__ import annotations
 
@@ -46,11 +58,33 @@ def suggest_chart(
     columns: list[str],
     rows_preview: list[list],
 ) -> dict:
+    """
+    Choose the best chart type for a given question and SQL result shape.
+
+    Parameters:
+      question      — original user question (used to detect "trend", "compare", etc.)
+      pattern       — analytical pattern from the Router (BREAKDOWN, CHANGE_ANALYSIS, etc.)
+      columns       — list of column names in the result set
+      rows_preview  — up to 40 rows of result data for the model to inspect
+
+    Returns a chart spec dict:
+      {
+        "chart_type": "bar",
+        "x_key":      "category",
+        "y_key":      "total_revenue",
+        "name_key":   "",
+        "value_key":  "",
+        "reasoning":  "comparing revenue across categories → bar chart"
+      }
+
+    Falls back to {"chart_type": "table"} if the LLM fails or returns
+    an invalid response — a plain table is always safe to render.
+    """
     payload = {
-        "question": question,
-        "pattern": pattern,
-        "columns": columns,
-        "rows_preview": rows_preview[:40],
+        "question":     question,
+        "pattern":      pattern,
+        "columns":      columns,
+        "rows_preview": rows_preview[:40],  # keep token count reasonable
     }
 
     try:
@@ -62,18 +96,20 @@ def suggest_chart(
             json_mode=True,
         )
     except Exception as e:
-        print(f"[chart_agent] LLM JSON response failed, using table fallback: {e}")
+        print(f"[chart_agent] LLM call failed, defaulting to table: {e}")
         result = {}
 
+    # Normalise response shape
     if isinstance(result, list):
         result = result[0] if result and isinstance(result[0], dict) else {}
     elif not isinstance(result, dict):
         result = {}
 
+    # Fill in defaults so the frontend always gets a complete spec
     result.setdefault("chart_type", "table")
-    result.setdefault("x_key", "")
-    result.setdefault("y_key", "")
-    result.setdefault("name_key", "")
-    result.setdefault("value_key", "")
-    result.setdefault("reasoning", "")
+    result.setdefault("x_key",      "")
+    result.setdefault("y_key",      "")
+    result.setdefault("name_key",   "")
+    result.setdefault("value_key",  "")
+    result.setdefault("reasoning",  "")
     return result

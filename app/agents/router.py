@@ -1,8 +1,21 @@
 """
 Agent 1 — Query Router.
 
-Classifies a user question into intent + analytical pattern.
-Dataset-agnostic: no hardcoded domain assumptions.
+What this agent does:
+  The router is the first LLM call in the query pipeline. It reads the user's
+  question and the schema summary, then decides:
+    1. Intent — is this answerable with SQL (STRUCTURED) or not (OUT_OF_SCOPE)?
+    2. Pattern — what analytical shape does this question have?
+       CHANGE_ANALYSIS / COMPARISON / BREAKDOWN / SUMMARY / GENERAL
+
+  The pattern is passed downstream to Agent 2 (SQL Generator) and Agent 4
+  (Answer Writer) so they apply the right analytical style. For example,
+  BREAKDOWN tells the SQL generator to use GROUP BY, while CHANGE_ANALYSIS
+  tells it to group by date_trunc.
+
+Why a separate routing step:
+  Using a small, fast model (Llama 3.1 8B) here keeps latency low while
+  reserving the heavier models for SQL and answer generation.
 """
 from app.core.llm_client import call_llm
 
@@ -53,6 +66,26 @@ Set requires_long_answer=true for: multi-entity analysis, "compare all X", "deta
 
 
 def route(question: str, schema_summary: str, conversation_state: str) -> dict:
+    """
+    Classify the user's question into an intent and analytical pattern.
+
+    Parameters:
+      question           — the raw user question
+      schema_summary     — one-line summary of available tables and columns
+      conversation_state — previous turn context for detecting follow-up questions
+
+    Returns a dict:
+      {
+        "intent":               "STRUCTURED" | "OUT_OF_SCOPE",
+        "pattern":              "BREAKDOWN" | "SUMMARY" | ... ,
+        "reasoning":            "one-sentence explanation",
+        "is_followup":          bool,
+        "requires_long_answer": bool
+      }
+
+    On LLM failure, defaults to STRUCTURED / GENERAL so the pipeline
+    continues rather than returning an unhelpful error to the user.
+    """
     state_section = ""
     if conversation_state:
         state_section = f"\n## Previous conversation context\n{conversation_state}\n"
@@ -71,22 +104,23 @@ def route(question: str, schema_summary: str, conversation_state: str) -> dict:
             json_mode=True,
         )
     except Exception as e:
-        print(f"[router] LLM JSON response failed, using safe defaults: {e}")
+        print(f"[router] LLM call failed, defaulting to STRUCTURED/GENERAL: {e}")
         result = {}
 
-    # Some models return arrays or raw strings even in json_mode.
+    # Normalise: some models return a list or plain string despite json_mode
     if isinstance(result, list):
         result = result[0] if result and isinstance(result[0], dict) else {}
     elif not isinstance(result, dict):
         result = {}
 
+    # Safe defaults — always allow the pipeline to continue
     result.setdefault("intent", "STRUCTURED")
     result.setdefault("pattern", "GENERAL")
     result.setdefault("reasoning", "")
     result.setdefault("is_followup", False)
     result.setdefault("requires_long_answer", False)
 
-    # Normalize to supported enum values.
+    # Normalise to supported enum values only
     if result.get("intent") not in ("STRUCTURED", "OUT_OF_SCOPE"):
         result["intent"] = "STRUCTURED"
     if result.get("pattern") not in (

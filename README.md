@@ -28,9 +28,11 @@ The platform is now upload-only by design. Demo dataset mode and demo routing we
 
 ### AI Pipeline
 
-- Multi-agent architecture: Router -> SQL Generator -> Executor/Validator -> Answer Generator.
+- Multi-agent architecture with consensus loop: Metadata Fast-Path -> Router -> SQL Generator -> Validator -> Executor -> Result Verifier -> Answer Generator -> Chart Selector.
+- Pre-router dataset metadata handler answers schema/overview questions instantly with zero LLM calls.
 - Pattern-aware SQL generation for breakdowns, comparisons, change analysis, summaries, and general analytical prompts.
 - Self-healing SQL retry on execution errors with error-feedback regeneration.
+- Verifier-guided SQL refinement when query results do not match user intent.
 - Query classification and semantic caching for faster repeated questions.
 - Strict upload-only execution path (no demo fallback).
 
@@ -126,10 +128,13 @@ http://localhost:5173
 
 ```text
 User Question
+	-> Metadata Fast-Path (dataset/schema overview, no LLM)
+	-> Query Classifier (hints + cache threshold)
 	-> Semantic Cache check
 	-> Router (intent + pattern)
 	-> Upload SQL Generator (DuckDB-aware)
 	-> DuckDB execute
+	-> SQL Result Verifier (grounding check + corrective retry)
 	-> Retry with error feedback (if needed)
 	-> Answer Generator
 	-> Chart payload converter

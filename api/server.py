@@ -36,6 +36,7 @@ from dotenv import load_dotenv
 load_dotenv(ROOT / ".env")
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -45,6 +46,8 @@ from app.core.query_classifier import classify_query
 from app.agents import router as agent_router
 from app.agents import answer_generator
 from app.agents import upload_sql_generator
+from app.agents import metadata_agent
+from app.agents import result_verifier
 from api.session import SessionManager
 from api.chart_converter import to_chart_payload
 from app.core.auto_semantic import (
@@ -68,9 +71,14 @@ def _env_bool(name: str, default: bool) -> bool:
     return raw.strip().lower() in ("1", "true", "yes", "on")
 
 
-FAST_UPLOAD_MODE_DEFAULT = _env_bool("FAST_UPLOAD_MODE", True)
+# Default to False so the LLM Schema Analyst (Agent 0) always runs on upload.
+# This produces richer semantic context, which makes SQL generation more accurate.
+# Set FAST_UPLOAD_MODE=true in .env only when you need the fastest possible upload
+# at the cost of weaker column understanding (skips LLM enrichment entirely).
+FAST_UPLOAD_MODE_DEFAULT = _env_bool("FAST_UPLOAD_MODE", False)
 UPLOAD_PROFILE_CONCURRENCY = max(1, int(os.getenv("UPLOAD_PROFILE_CONCURRENCY", "4")))
 UPLOAD_STREAM_HEARTBEAT_SECONDS = max(3, int(os.getenv("UPLOAD_STREAM_HEARTBEAT_SECONDS", "8")))
+RESULT_VERIFIER_ENABLED = _env_bool("RESULT_VERIFIER_ENABLED", True)
 
 app = FastAPI(title="Talk-To-Data API", version="3.0")
 app.add_middleware(
@@ -105,7 +113,8 @@ class RemoveTableRequest(BaseModel):
 # ── SSE helpers ────────────────────────────────────────────────────────────────
 
 def _sse(payload: dict) -> str:
-    return f"data: {json.dumps(payload)}\n\n"
+    # Normalize date/datetime/Decimal and other rich Python values before SSE JSON dump.
+    return f"data: {json.dumps(jsonable_encoder(payload))}\n\n"
 
 
 def _thinking(step_type: str, message: str, detail: str | None = None) -> tuple[str, str]:
@@ -173,12 +182,41 @@ def _run_query_pipeline(question: str, session_id: str, emit) -> dict:
     start = time.time()
     timings: dict[str, float] = {}
 
-    if not session.has_data:
-        return {"answer": "Please upload a data file first.", "cached": False, "time_ms": 0}
-
     # Build combined context across all uploaded tables
     table_names = session.table_names
     profiles = session.profiles
+
+    # Agent 0.5: metadata-only fast-path for dataset/schema overview questions.
+    # This path never calls an LLM and is resilient to provider outages.
+    if metadata_agent.is_dataset_description_query(question):
+        emit("routing", "Summarizing dataset metadata")
+        t0 = time.time()
+        metadata_response = metadata_agent.generate_dataset_description(
+            con=session.con,
+            tables=table_names,
+            table_schemas=session.ingestion.table_schemas,
+            profiles=profiles,
+        )
+        timings["metadata_ms"] = round((time.time() - t0) * 1000)
+        elapsed = round((time.time() - start) * 1000)
+        timings["total_ms"] = elapsed
+        metadata_response.setdefault(
+            "route",
+            {
+                "intent": "STRUCTURED",
+                "pattern": "SUMMARY",
+                "reasoning": "Dataset metadata fast-path",
+            },
+        )
+        metadata_response.setdefault("results", None)
+        metadata_response.setdefault("sql", None)
+        metadata_response["cached"] = False
+        metadata_response["time_ms"] = elapsed
+        metadata_response["debug_timings"] = timings
+        return metadata_response
+
+    if not session.has_data:
+        return {"answer": "Please upload a data file first.", "cached": False, "time_ms": 0}
 
     # Combined enriched context for SQL generator
     enriched_context = session.semantic.get_combined_context(table_names)
@@ -187,6 +225,7 @@ def _run_query_pipeline(question: str, session_id: str, emit) -> dict:
     # Query classification for cache threshold
     classification = classify_query(question)
     query_type = classification["query_type"]
+    query_hints = classification.get("hints") or []
 
     # Cache lookup
     cached = _cache.find_similar(
@@ -232,6 +271,7 @@ def _run_query_pipeline(question: str, session_id: str, emit) -> dict:
         enriched_context=enriched_context,
         verified_query=best_verified,
         conversation_state=state_ctx,
+        query_hints=query_hints,
     )
     sql = gen_result["sql"]
     timings["sql_gen_ms"] = round((time.time() - t0) * 1000)
@@ -251,6 +291,7 @@ def _run_query_pipeline(question: str, session_id: str, emit) -> dict:
             verified_query=best_verified,
             conversation_state=state_ctx,
             error_feedback=validation["error"],
+            query_hints=query_hints,
         )
         sql = gen_result["sql"]
         timings["sql_gen_ms"] = round((time.time() - t0) * 1000 + timings.get("sql_gen_ms", 0))
@@ -280,6 +321,7 @@ def _run_query_pipeline(question: str, session_id: str, emit) -> dict:
             verified_query=best_verified,
             conversation_state=state_ctx,
             error_feedback=exec_result["error"],
+            query_hints=query_hints,
         )
         sql = gen_result["sql"]
         exec_result = _execute_sql(session, sql)
@@ -298,6 +340,99 @@ def _run_query_pipeline(question: str, session_id: str, emit) -> dict:
             "time_ms": (time.time() - start) * 1000,
             "debug_timings": timings,
         }
+
+    # Step 4.5: Result verification (Agent 5)
+    # Fast heuristic checks first; LLM only for ambiguous cases.
+    if RESULT_VERIFIER_ENABLED:
+        emit("executing", "Verifying result relevance")
+        t0 = time.time()
+        verification = result_verifier.verify_result(
+            question=question,
+            sql=sql,
+            rows=exec_result.get("results") or [],
+            columns=exec_result.get("columns") or [],
+        )
+        timings["verify_ms"] = round((time.time() - t0) * 1000)
+        print(
+            f"[pipeline][timing] verify={timings['verify_ms']}ms "
+            f"grounded={verification.get('grounded')} "
+            f"confidence={verification.get('confidence')} "
+            f"issue={verification.get('issue')}"
+        )
+
+        verification_conf = int(verification.get("confidence", 0) or 0)
+        if not verification.get("grounded", True) and verification_conf >= 7:
+            issue = verification.get("issue") or "Result does not directly answer the question."
+            print(f"[pipeline] verifier flagged mismatch, retrying SQL: {issue}")
+            emit("sql", "Refining SQL with verifier feedback")
+            t0 = time.time()
+
+            gen_result = upload_sql_generator.generate_sql(
+                question=question,
+                pattern=pattern,
+                enriched_context=enriched_context,
+                verified_query=best_verified,
+                conversation_state=state_ctx,
+                error_feedback=f"{issue} Ensure the SQL directly answers the question.",
+                query_hints=query_hints,
+            )
+            sql = gen_result["sql"]
+            validation = _validate_sql(session, sql)
+            if validation["valid"]:
+                exec_result = _execute_sql(session, sql)
+            else:
+                exec_result = {
+                    "success": False,
+                    "results": None,
+                    "columns": None,
+                    "error": validation["error"],
+                }
+            timings["verify_retry_ms"] = round((time.time() - t0) * 1000)
+
+            if not exec_result["success"]:
+                return {
+                    "answer": f"I couldn't execute the verifier-corrected query. Error: {exec_result['error']}.",
+                    "sql": sql,
+                    "cached": False,
+                    "time_ms": (time.time() - start) * 1000,
+                    "debug_timings": timings,
+                }
+
+            t0 = time.time()
+            verification = result_verifier.verify_result(
+                question=question,
+                sql=sql,
+                rows=exec_result.get("results") or [],
+                columns=exec_result.get("columns") or [],
+            )
+            timings["verify_ms"] = timings.get("verify_ms", 0) + round((time.time() - t0) * 1000)
+            verification_conf = int(verification.get("confidence", 0) or 0)
+            print(
+                "[pipeline] verifier after retry "
+                f"grounded={verification.get('grounded')} "
+                f"confidence={verification.get('confidence')}"
+            )
+
+            if not verification.get("grounded", True) and verification_conf >= 7:
+                elapsed = round((time.time() - start) * 1000)
+                timings["total_ms"] = elapsed
+                return {
+                    "answer": (
+                        "I ran a query but could not confidently match the result to your question. "
+                        "Please rephrase with explicit metric and grouping details."
+                    ),
+                    "sql": sql,
+                    "results": exec_result,
+                    "confidence": 3,
+                    "follow_ups": [
+                        "Can you specify the metric you want to analyze?",
+                        "Can you specify how the result should be grouped?",
+                    ],
+                    "route": route,
+                    "cached": False,
+                    "time_ms": elapsed,
+                    "debug_timings": timings,
+                }
 
     # Step 5: Generate answer (Agent 4)
     emit("answering", "Generating answer")

@@ -16,7 +16,7 @@ import yaml
 import json
 import re
 from pathlib import Path
-from app.core.groq_client import call_llm
+from app.core.llm_client import call_llm
 
 
 def _load_templates() -> dict:
